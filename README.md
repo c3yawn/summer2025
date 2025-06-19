@@ -1,4 +1,14 @@
 # summer2025
-Summer 2025 Cohort
+Team C - Learning Lens: FocusEd AI
 
-Add your name here along with the team you're on. It verifies that you have write access.
+## Team C Roster
+| Role                | Name               |
+|---------------------|--------------------|
+| Team Lead | Sevan Woods  |
+| Lead BA          | Taylor Milton-Baker        |
+| Business Analyst   | Medhanit Gashaw        |
+| Business Analyst   | Daouda Diabate        |
+| Tech Lead | Zaid Khalid        |
+| Software Engineer             | Kelvin Nhim      |
+| Software Engineer             | Josiah Weeks      |
+| Test Lead          | Joshua Snavely |

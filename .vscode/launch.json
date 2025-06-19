@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-CodecompilerApplication<focused_ai_services>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.focusedai.codecompiler.CodecompilerApplication",
+            "projectName": "focused_ai_services",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
