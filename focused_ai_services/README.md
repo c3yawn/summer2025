@@ -8,6 +8,7 @@
 
 ## To run the app
 
+* In your CLI, change your directory to the `docker_resources/java_dockerfile` folder. From there, run `docker build -t java-compiler-runner .`. This builds the image from the Dockerfile. This is strictly for the Java code compiler feature. Please update the README to reflect changes once the additional languages have been supported. You can confirm the image has been built correctly by running `docker images` or checking the Docker Desktop images tab.
 * I just use the Spring Boot Dashboard on the side to start the backend. Once you see the startup logs in your terminal and a log for Tomcat and the port 8080, you should be set.
 * To test the backend, make a free Postman account and download [Postman](https://www.postman.com/downloads/) for your OS and download the [Postman Desktop Agent](https://www.postman.com/downloads/postman-agent/). The Agent is required to overcome the CORS issue while testing.
 
