@@ -5,7 +5,7 @@
 * Install the Flutter extension for VS Code (this should also automatically install the Dart extension but if not, install that too)
 
 # To run the app
-Change directory to pubspec.yaml `cd "C:\Users\jmsna\OneDrive\Desktop\UMGC Summer 2025\SWEN 670\summer2025\focused_ai_ui"`
+Change directory to pubspec.yaml. Example: `cd "C:\Users\jmsna\OneDrive\Desktop\UMGC Summer 2025\SWEN 670\summer2025\focused_ai_ui"`
 Must run with port `3000` or `5000` to satisfy CORS error: `flutter run -d chrome --web-port 3000`
 
 # To commit changes
