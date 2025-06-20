@@ -1,11 +1,17 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:highlight/highlight_core.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:file_saver/file_saver.dart';
 import 'dart:typed_data';
+import 'package:flutter_code_editor/flutter_code_editor.dart';
+import 'package:highlight/languages/java.dart';
+import 'package:highlight/languages/javascript.dart';
+import 'package:highlight/languages/python.dart';
+import 'package:highlight/languages/cpp.dart';
 
 class CodeSubmissionService {
   final String baseUrl = 'http://localhost:8080/code';
@@ -59,7 +65,16 @@ class CodeExecutionScreen extends StatefulWidget {
 
 class _CodeExecutionScreenState extends State<CodeExecutionScreen> {
   final CodeSubmissionService _service = CodeSubmissionService();
-  final TextEditingController _codeEditorController = TextEditingController();
+
+  final Map<String, Mode> _languageModes = {
+    'java': java,
+    'javascript': javascript,
+    'python': python,
+    'cpp': cpp,
+  };
+
+  // final TextEditingController _codeEditorController = TextEditingController();
+  late final CodeController _codeEditorController;
   final TextEditingController _mainClassNameController = TextEditingController();
 
   PlatformFile? _activeFile; // currently selected file (if any)
@@ -72,7 +87,13 @@ class _CodeExecutionScreenState extends State<CodeExecutionScreen> {
   @override
   void initState() {
     super.initState();
+
     _mainClassNameController.text = "HelloWorld";
+
+    _codeEditorController = CodeController(
+      text: '',
+      language: _languageModes['java']!, // default
+    );
   }
 
   @override
@@ -233,12 +254,14 @@ class _CodeExecutionScreenState extends State<CodeExecutionScreen> {
                   child: DropdownButton<String>(
                     value: _selectedLanguage,
                     onChanged: (String? newValue) {
-                      setState(() {
-                        _selectedLanguage = newValue!;
-                        // Reset file selection and main file name when language changes
-                        _selectedFiles = [];
-                        _mainClassNameController.text = "";
-                      });
+                      if (newValue != null && _languageModes.containsKey(newValue)) {
+                        setState(() {
+                          _selectedLanguage = newValue;
+                          _selectedFiles = [];
+                          _mainClassNameController.text = "";
+                          _codeEditorController.language = _languageModes[_selectedLanguage]!;
+                        });
+                      }
                     },
                     items: _supportedLanguages.map((lang) {
                       return DropdownMenuItem(
@@ -268,15 +291,21 @@ class _CodeExecutionScreenState extends State<CodeExecutionScreen> {
             const SizedBox(height: 8),
             Expanded(
               flex: 2,
-              child: TextField(
+              child:CodeTheme(
+                data: CodeThemeData(styles: {
+                  'root': TextStyle(color: Color(0xfff8f8f2), backgroundColor: Color(0xff272822)),
+                  'keyword': TextStyle(color: Color(0xffff6188)),
+                  'string': TextStyle(color: Color(0xffa9dc76)),
+                  'comment': TextStyle(color: Color(0xff6272a4)),
+                  'number': TextStyle(color: Color(0xffffd866)),
+                  'built_in': TextStyle(color: Color(0xff78dce8)),
+                  'class-name': TextStyle(color: Color(0xffff6188)),
+                }),
+              child: CodeField(
                 controller: _codeEditorController,
-                maxLines: null,
+                textStyle: const TextStyle(fontFamily: 'monospace', fontSize: 14),
                 expands: true,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: "Write or paste your code here...",
                 ),
-                style: const TextStyle(fontFamily: 'monospace', fontSize: 14),
               ),
             ),
             const SizedBox(height: 20),
@@ -299,6 +328,16 @@ class _CodeExecutionScreenState extends State<CodeExecutionScreen> {
     );
   }
 }
+
+  Mode _getLanguage(String lang) {
+      switch (lang) {
+          case 'java': return java;
+          case 'javascript': return javascript;
+          case 'python': return python;
+          case 'cpp': return cpp;
+          default: return java;
+    }
+  }
 
 void main() {
   runApp(const MyApp());
