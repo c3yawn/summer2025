@@ -51,4 +51,4 @@ These additional references should also help you:
 * If you want to remove a file from staging, type in `git restore --staged [file]`.
 * Once all the changes you want to commit are staged, you can type `git status` again to make sure all the files you want are staged (will be in green)
 * To commit the files, type in `git commit -m ""` (put in a message in between the quotes related to the changes you made. For example, `git commit -m "added javascript capability"`)
-* To push the commits to the github repository, type in `git push -u origin {branch name}` (where {branch name} is replaced with where you want to push the changes. For example, `git push -u origin team-c/code-compiler`). Once you have pushed something to the branch, all future pushes can be done with just `git push`
+* To push the commits to the github repository, type in `git push`

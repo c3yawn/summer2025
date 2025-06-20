@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:file_saver/file_saver.dart';
+import 'dart:typed_data';
 
 class CodeSubmissionService {
   final String baseUrl = 'http://localhost:8080/code';
@@ -190,6 +192,29 @@ class _CodeExecutionScreenState extends State<CodeExecutionScreen> {
     }
   }
 
+  Future<void> _saveCodeToFile() async {
+  final code = _codeEditorController.text;
+  final fileExtension = _selectedLanguage == 'java'
+      ? 'java'
+      : _selectedLanguage == 'javascript'
+          ? 'js'
+          : _selectedLanguage == 'python'
+              ? 'py'
+              : 'cpp';
+
+  final filename = _mainClassNameController.text.isNotEmpty
+      ? _mainClassNameController.text
+      : 'my_code';
+
+  final bytes = Uint8List.fromList(code.codeUnits);
+
+  await FileSaver.instance.saveFile(
+    name: filename,
+    bytes: bytes,
+    ext: fileExtension,
+  );
+}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -258,6 +283,11 @@ class _CodeExecutionScreenState extends State<CodeExecutionScreen> {
             ElevatedButton(
               onPressed: _runCode,
               child: const Text('Compile and Run Code'),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: _saveCodeToFile,
+              child: const Text('Download Edited Code'),
             ),
             const SizedBox(height: 20),
             Expanded(
