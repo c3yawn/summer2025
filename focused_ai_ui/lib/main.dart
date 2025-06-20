@@ -7,18 +7,20 @@ import 'package:file_picker/file_picker.dart';
 class CodeSubmissionService {
   final String baseUrl = 'http://localhost:8080/code';
 
-  Future<Map<String, dynamic>> executeJavaCode({
-    required List<http.MultipartFile> javaFiles,
+  Future<Map<String, dynamic>> executeCode({
+    required List<http.MultipartFile> codeFiles,
     required String mainClassName,
+    required String language,
   }) async {
     final uri = Uri.parse('$baseUrl/execute');
     final request = http.MultipartRequest('POST', uri);
 
-    // Add each pre-prepared MultipartFile to the request
-    request.files.addAll(javaFiles);
-
-    // Add other form fields (mainClassName)
+    // Add form fields for main file name and language
     request.fields['mainClassName'] = mainClassName;
+    request.fields['language'] = language;
+
+    // Add the uploaded files (named "javaFiles" for compatibility)
+    request.files.addAll(codeFiles);
 
     try {
       final response = await request.send();
@@ -55,8 +57,11 @@ class CodeExecutionScreen extends StatefulWidget {
 class _CodeExecutionScreenState extends State<CodeExecutionScreen> {
   final CodeSubmissionService _service = CodeSubmissionService();
   String _output = "Ready to execute code...";
-  List<PlatformFile> _selectedFiles = []; // To store selected files
+  List<PlatformFile> _selectedFiles = [];
   TextEditingController _mainClassNameController = TextEditingController();
+
+  String _selectedLanguage = 'java'; // default selection
+  final List<String> _supportedLanguages = ['java', 'javascript', 'python'];
 
   @override
   void initState() {
@@ -70,28 +75,35 @@ class _CodeExecutionScreenState extends State<CodeExecutionScreen> {
     super.dispose();
   }
 
-  // Function to open file picker
+  // Opens the file picker with dynamic allowed extensions based on language
   Future<void> _pickFiles() async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['java'], // Only allow .java files
-        allowMultiple: true, // Allow selecting multiple files
+        allowedExtensions: _selectedLanguage == 'java' ? ['java'] 
+        : _selectedLanguage == 'javascript'
+        ? ['js']
+        : ['py'],
+        allowMultiple: true,
       );
 
       if (result != null && result.files.isNotEmpty) {
         setState(() {
           _selectedFiles = result.files;
         });
-        // Optionally, try to infer mainClassName if only one file is selected
+        // Auto-set the main file name if only one file is selected
         if (_selectedFiles.length == 1) {
-          String? fileName = _selectedFiles.first.name;
-          if (fileName.endsWith('.java')) {
+          String fileName = _selectedFiles.first.name;
+          if (_selectedLanguage == 'java' && fileName.endsWith('.java')) {
             _mainClassNameController.text = fileName.substring(0, fileName.length - 5);
+          } else if (_selectedLanguage == 'javascript' && fileName.endsWith('.js')) {
+            _mainClassNameController.text = fileName.substring(0, fileName.length - 3);
+          } else if (_selectedLanguage == 'python' && fileName.endsWith('.py')) {
+            _mainClassNameController.text = fileName.substring(0, fileName.length - 3);
           }
         }
+
       } else {
-        // User canceled the picker
         setState(() {
           _selectedFiles = [];
         });
@@ -100,42 +112,41 @@ class _CodeExecutionScreenState extends State<CodeExecutionScreen> {
       setState(() {
         _output = "Error picking files: $e";
       });
-      print("Error picking files: $e"); // Log to console
+      print("Error picking files: $e");
     }
   }
 
-  // Function to run code
+  // Executes the selected code
   Future<void> _runCode() async {
     if (_selectedFiles.isEmpty) {
       setState(() {
-        _output = "Please select Java files first.";
+        _output = "Please select code files first.";
       });
       return;
     }
-
     if (_mainClassNameController.text.isEmpty) {
       setState(() {
-        _output = "Please enter the main class name.";
+        _output = "Please enter the main file (or class) name.";
       });
       return;
     }
-
     setState(() {
       _output = "Executing code...";
     });
 
+    // Prepare files to send
     List<http.MultipartFile> filesToSend = [];
     for (var platformFile in _selectedFiles) {
-      if (platformFile.bytes != null) { // For web, bytes are directly available
+      if (platformFile.bytes != null) {
         filesToSend.add(
           http.MultipartFile.fromBytes(
             'javaFiles',
             platformFile.bytes!,
             filename: platformFile.name,
-            contentType: MediaType('text', 'plain', {'charset': 'utf-8'}), // Or 'text/x-java-source'
+            contentType: MediaType('text', 'plain', {'charset': 'utf-8'}),
           ),
         );
-      } else if (platformFile.path != null) { // For mobile/desktop, read from path
+      } else if (platformFile.path != null) {
         filesToSend.add(
           await http.MultipartFile.fromPath(
             'javaFiles',
@@ -148,9 +159,10 @@ class _CodeExecutionScreenState extends State<CodeExecutionScreen> {
     }
 
     try {
-      final result = await _service.executeJavaCode(
-        javaFiles: filesToSend,
+      final result = await _service.executeCode(
+        codeFiles: filesToSend,
         mainClassName: _mainClassNameController.text,
+        language: _selectedLanguage,
       );
 
       setState(() {
@@ -176,15 +188,42 @@ class _CodeExecutionScreenState extends State<CodeExecutionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Java Compiler')),
+      appBar: AppBar(
+        title: const Text('Code Compiler'),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ElevatedButton(
-              onPressed: _pickFiles,
-              child: const Text('Select Java Program Files'),
+            // Row with dropdown and file picker button
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButton<String>(
+                    value: _selectedLanguage,
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        _selectedLanguage = newValue!;
+                        // Reset file selection and main file name when language changes
+                        _selectedFiles = [];
+                        _mainClassNameController.text = "";
+                      });
+                    },
+                    items: _supportedLanguages.map((lang) {
+                      return DropdownMenuItem(
+                        value: lang,
+                        child: Text(lang.toUpperCase()),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                ElevatedButton(
+                  onPressed: _pickFiles,
+                  child: const Text('Select Code Files'),
+                ),
+              ],
             ),
             const SizedBox(height: 10),
             Text(
@@ -197,7 +236,7 @@ class _CodeExecutionScreenState extends State<CodeExecutionScreen> {
             TextField(
               controller: _mainClassNameController,
               decoration: const InputDecoration(
-                labelText: 'Which class contains your main method?',
+                labelText: 'Main File (or Class) Name',
                 border: OutlineInputBorder(),
                 labelStyle: TextStyle(fontWeight: FontWeight.bold),
               ),
@@ -205,7 +244,7 @@ class _CodeExecutionScreenState extends State<CodeExecutionScreen> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _runCode,
-              child: const Text('Compile and Run Selected Code'),
+              child: const Text('Compile and Run Code'),
             ),
             const SizedBox(height: 20),
             Expanded(
@@ -226,14 +265,11 @@ void main() {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Java Compiler',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
+      title: 'Code Compiler',
+      theme: ThemeData(primarySwatch: Colors.blue),
       home: const CodeExecutionScreen(),
     );
   }

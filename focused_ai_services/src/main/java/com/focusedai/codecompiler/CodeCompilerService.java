@@ -14,27 +14,23 @@ import java.util.stream.Stream;
 @RequestMapping("/code")
 public class CodeCompilerService {
 
-    private static final String DOCKER_IMAGE = "java-compiler-runner";
+    private static final String JAVA_DOCKER_IMAGE = "java-compiler-runner";
+    private static final String JS_DOCKER_IMAGE = "js-compiler-runner";
     private static final long TIMEOUT_SECONDS = 30;
 
-    /**
-     * Accepts multiple Java source files as multipart/form-data and executes them in a Docker container.
-     *
-     * @param javaFiles An array of MultipartFile representing the Java source files.
-     * @param mainClassName The name of the main class to compile and run (without .java extension).
-     * @return A CodeExecutionResult containing status, compilation errors, and program output.
-     */
     @PostMapping(value = "/execute", consumes = "multipart/form-data")
-    public CodeExecutionResult executeJavaCode(
-            @RequestParam("javaFiles") MultipartFile[] javaFiles,
-            @RequestParam("mainClassName") String mainClassName) {
+    public CodeExecutionResult executeCode(
+            @RequestParam("javaFiles") MultipartFile[] codeFiles,
+            @RequestParam("mainClassName") String mainClassName,
+            @RequestParam("language") String language) {
 
-        Path tempHostDir = null; // Temporary directory on the Spring Boot host
+        Path tempHostDir = null;
+
         try {
             String uniqueId = UUID.randomUUID().toString();
-            tempHostDir = Files.createTempDirectory("java_code_submission_" + uniqueId);
+            tempHostDir = Files.createTempDirectory("code_submission_" + uniqueId);
 
-            for (MultipartFile file : javaFiles) {
+            for (MultipartFile file : codeFiles) {
                 if (!file.isEmpty()) {
                     Path filePath = tempHostDir.resolve(file.getOriginalFilename());
                     Files.copy(file.getInputStream(), filePath);
@@ -42,57 +38,16 @@ public class CodeCompilerService {
                 }
             }
 
-            Path compilationErrorsFile = tempHostDir.resolve("compilation_errors.txt");
-            Path programOutputAndErrorsFile = tempHostDir.resolve("program_output_and_errors.txt");
-
-            // Docker commands
-
-            // Override ENTRYPOINT to run /bin/sh for compilation
-            String compileCommandString = String.format(
-                "docker run --rm --entrypoint /bin/sh -v \"%s:/app\" %s -c \"javac *.java 2> /app/%s\"",
-                tempHostDir.toAbsolutePath().toString(),
-                DOCKER_IMAGE,
-                compilationErrorsFile.getFileName().toString()
-            );
-
-            System.out.println("Compiling with command: " + compileCommandString); // Debugging
-            Process compileProcess = Runtime.getRuntime().exec(compileCommandString);
-            new Thread(() -> { try { compileProcess.getErrorStream().transferTo(System.err); } catch (IOException e) { System.err.println("Error consuming compile stderr: " + e.getMessage());} }).start();
-            new Thread(() -> { try { compileProcess.getInputStream().transferTo(System.out); } catch (IOException e) { System.err.println("Error consuming compile stdout: " + e.getMessage());} }).start();
-
-            boolean compileExited = compileProcess.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS);
-
-            if (!compileExited) {
-                compileProcess.destroyForcibly();
-                return new CodeExecutionResult("Compilation Timed Out", "", "", true);
+            if ("java".equalsIgnoreCase(language)) {
+                return executeJava(tempHostDir, mainClassName);
+            } else if ("javascript".equalsIgnoreCase(language)) {
+                return executeJavaScript(tempHostDir, mainClassName);
+            } else if ("python".equalsIgnoreCase(language)) {
+                return executePython(tempHostDir, mainClassName);
             }
-            if (compileProcess.exitValue() != 0) {
-                String compilationErrors = Files.readString(compilationErrorsFile);
-                return new CodeExecutionResult("Compilation Failed", compilationErrors, "", true);
+              else {
+                return new CodeExecutionResult("Unsupported Language", "", "Language not supported: " + language, true);
             }
-
-            // Override ENTRYPOINT to run /bin/sh for execution
-            String runCommandString = String.format(
-                "docker run --rm --entrypoint /bin/sh -v \"%s:/app\" %s -c \"java %s > /app/%s 2>&1\"",
-                tempHostDir.toAbsolutePath().toString(),
-                DOCKER_IMAGE,
-                mainClassName,
-                programOutputAndErrorsFile.getFileName().toString()
-            );
-            System.out.println("Running with command: " + runCommandString); // Debugging
-            Process runProcess = Runtime.getRuntime().exec(runCommandString);
-            new Thread(() -> { try { runProcess.getErrorStream().transferTo(System.err); } catch (IOException e) { System.err.println("Error consuming run stderr: " + e.getMessage());} }).start();
-            new Thread(() -> { try { runProcess.getInputStream().transferTo(System.out); } catch (IOException e) { System.err.println("Error consuming run stdout: " + e.getMessage());} }).start();
-
-            boolean runExited = runProcess.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS);
-
-            if (!runExited) {
-                runProcess.destroyForcibly();
-                return new CodeExecutionResult("Execution Timed Out", "", "", true);
-            }
-
-            String programOutput = Files.readString(programOutputAndErrorsFile);
-            return new CodeExecutionResult("Success", "", programOutput, false);
 
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
@@ -105,13 +60,108 @@ public class CodeCompilerService {
                         .forEach(File::delete);
                 } catch (IOException e) {
                     System.err.println("Failed to delete temp directory: " + tempHostDir + " " + e.getMessage());
-                    e.printStackTrace();
                 }
             }
         }
     }
 
-    // Response fields
+    private CodeExecutionResult executeJava(Path tempDir, String mainClassName) throws IOException, InterruptedException {
+        Path compilationErrorsFile = tempDir.resolve("compilation_errors.txt");
+        Path outputFile = tempDir.resolve("program_output.txt");
+
+        String compileCmd = String.format(
+                "docker run --rm --entrypoint /bin/sh -v \"%s:/app\" %s -c \"javac *.java 2> /app/%s\"",
+                tempDir.toAbsolutePath(),
+                JAVA_DOCKER_IMAGE,
+                compilationErrorsFile.getFileName()
+        );
+
+        Process compileProcess = Runtime.getRuntime().exec(compileCmd);
+        boolean compileExited = compileProcess.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+
+        if (!compileExited) {
+            compileProcess.destroyForcibly();
+            return new CodeExecutionResult("Compilation Timed Out", "", "", true);
+        }
+
+        String compileErrors = Files.readString(compilationErrorsFile);
+        if (compileProcess.exitValue() != 0) {
+            return new CodeExecutionResult("Compilation Failed", compileErrors, "", true);
+        }
+
+        String runCmd = String.format(
+                "docker run --rm --entrypoint /bin/sh -v \"%s:/app\" %s -c \"java %s > /app/%s 2>&1\"",
+                tempDir.toAbsolutePath(),
+                JAVA_DOCKER_IMAGE,
+                mainClassName,
+                outputFile.getFileName()
+        );
+
+        return runDockerCommand(runCmd, outputFile, "Java Execution Failed");
+    }
+
+    private CodeExecutionResult executeJavaScript(Path tempDir, String mainClassName) throws IOException, InterruptedException {
+        Path outputFile = tempDir.resolve("program_output.txt");
+        String mainFileName = mainClassName.toLowerCase().endsWith(".js") ? mainClassName : mainClassName + ".js";
+
+        String runCmd = String.format(
+                "docker run --rm --entrypoint /bin/sh -v \"%s:/app\" %s -c \"node %s > /app/%s 2>&1\"",
+                tempDir.toAbsolutePath(),
+                JS_DOCKER_IMAGE,
+                mainFileName,
+                outputFile.getFileName()
+        );
+
+        return runDockerCommand(runCmd, outputFile, "JavaScript Execution Failed");
+    }
+
+    private CodeExecutionResult runDockerCommand(String command, Path outputFile, String errorStatus)
+            throws IOException, InterruptedException {
+        try {
+            Process process = Runtime.getRuntime().exec(command);
+            boolean finished = process.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+
+            if (!finished) {
+                process.destroyForcibly();
+                return new CodeExecutionResult("Execution Timed Out", "", "", true);
+            }
+
+            int exitCode = process.exitValue();
+            String output = Files.exists(outputFile) ? Files.readString(outputFile) : getProcessOutput(process);
+
+            if (exitCode != 0) {
+                return new CodeExecutionResult(errorStatus, "", output, true);
+            }
+
+            return new CodeExecutionResult("Success", "", output, false);
+
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+            return new CodeExecutionResult("Server Error", "", e.getMessage(), true);
+        }
+    }
+
+    private CodeExecutionResult executePython(Path tempDir, String mainFileName) throws IOException, InterruptedException {
+        Path outputFile = tempDir.resolve("program_output.txt");
+        String pythonFileName = mainFileName.toLowerCase().endsWith(".py") ? mainFileName : mainFileName + ".py";
+
+        String runCmd = String.format(
+            "docker run --rm --entrypoint /bin/sh -v \"%s:/app\" %s -c \"python %s > /app/%s 2>&1\"",
+            tempDir.toAbsolutePath(),
+            "python-compiler-runner",
+            pythonFileName,
+            outputFile.getFileName()
+        );
+
+        return runDockerCommand(runCmd, outputFile, "Python Execution Failed");
+    }
+
+    private String getProcessOutput(Process process) throws IOException {
+        String stdout = new String(process.getInputStream().readAllBytes());
+        String stderr = new String(process.getErrorStream().readAllBytes());
+        return stdout + "\n" + stderr;
+    }
+
     static class CodeExecutionResult {
         public String status;
         public String compilationErrors;
