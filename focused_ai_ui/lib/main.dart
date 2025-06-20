@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:flutter/material.dart';
@@ -56,12 +57,15 @@ class CodeExecutionScreen extends StatefulWidget {
 
 class _CodeExecutionScreenState extends State<CodeExecutionScreen> {
   final CodeSubmissionService _service = CodeSubmissionService();
+  final TextEditingController _codeEditorController = TextEditingController();
+  final TextEditingController _mainClassNameController = TextEditingController();
+
+  PlatformFile? _activeFile; // currently selected file (if any)
   String _output = "Ready to execute code...";
   List<PlatformFile> _selectedFiles = [];
-  TextEditingController _mainClassNameController = TextEditingController();
-
   String _selectedLanguage = 'java'; // default selection
-  final List<String> _supportedLanguages = ['java', 'javascript', 'python'];
+
+  final List<String> _supportedLanguages = ['java', 'javascript', 'python', 'cpp'];
 
   @override
   void initState() {
@@ -71,6 +75,7 @@ class _CodeExecutionScreenState extends State<CodeExecutionScreen> {
 
   @override
   void dispose() {
+    _codeEditorController.dispose();
     _mainClassNameController.dispose();
     super.dispose();
   }
@@ -80,33 +85,39 @@ class _CodeExecutionScreenState extends State<CodeExecutionScreen> {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: _selectedLanguage == 'java' ? ['java'] 
-        : _selectedLanguage == 'javascript'
-        ? ['js']
-        : ['py'],
-        allowMultiple: true,
+        allowedExtensions: _selectedLanguage == 'java' 
+            ? ['java'] 
+            : _selectedLanguage == 'javascript'
+              ? ['js']
+              : _selectedLanguage == 'python'
+                ? ['py']
+                : ['cpp'],
+        allowMultiple: false, // only one file for editable use case
       );
 
       if (result != null && result.files.isNotEmpty) {
         setState(() {
           _selectedFiles = result.files;
+          _activeFile = result.files.first;
         });
-        // Auto-set the main file name if only one file is selected
-        if (_selectedFiles.length == 1) {
-          String fileName = _selectedFiles.first.name;
-          if (_selectedLanguage == 'java' && fileName.endsWith('.java')) {
-            _mainClassNameController.text = fileName.substring(0, fileName.length - 5);
-          } else if (_selectedLanguage == 'javascript' && fileName.endsWith('.js')) {
-            _mainClassNameController.text = fileName.substring(0, fileName.length - 3);
-          } else if (_selectedLanguage == 'python' && fileName.endsWith('.py')) {
-            _mainClassNameController.text = fileName.substring(0, fileName.length - 3);
-          }
-        }
 
-      } else {
-        setState(() {
-          _selectedFiles = [];
-        });
+        if(_activeFile!.bytes != null) {
+          _codeEditorController.text = utf8.decode(_activeFile!.bytes!);
+        } else if (_activeFile!.path != null) {
+          final content = await File(_activeFile!.path!).readAsString();
+          _codeEditorController.text = content;
+        }
+        
+        final fileName = _activeFile!.name;
+        if (_selectedLanguage == 'java' && fileName.endsWith('.java')) {
+          _mainClassNameController.text = fileName.substring(0, fileName.length - 5);
+        } else if (_selectedLanguage == 'javascript' && fileName.endsWith('.js')) {
+          _mainClassNameController.text = fileName.substring(0, fileName.length - 3);
+        } else if (_selectedLanguage == 'python' && fileName.endsWith('.py')) {
+          _mainClassNameController.text = fileName.substring(0, fileName.length - 3);
+        } else if (_selectedLanguage == 'cpp' && fileName.endsWith('.cpp')) {
+          _mainClassNameController.text = fileName.substring(0, fileName.length - 4);
+        }
       }
     } catch (e) {
       setState(() {
@@ -120,13 +131,13 @@ class _CodeExecutionScreenState extends State<CodeExecutionScreen> {
   Future<void> _runCode() async {
     if (_selectedFiles.isEmpty) {
       setState(() {
-        _output = "Please select code files first.";
+        _output = "Please enter the main file (or class) name.";
       });
       return;
     }
     if (_mainClassNameController.text.isEmpty) {
       setState(() {
-        _output = "Please enter the main file (or class) name.";
+        _output = "Code editor is empty. Please write or upload code first.";
       });
       return;
     }
@@ -134,33 +145,27 @@ class _CodeExecutionScreenState extends State<CodeExecutionScreen> {
       _output = "Executing code...";
     });
 
-    // Prepare files to send
-    List<http.MultipartFile> filesToSend = [];
-    for (var platformFile in _selectedFiles) {
-      if (platformFile.bytes != null) {
-        filesToSend.add(
-          http.MultipartFile.fromBytes(
-            'javaFiles',
-            platformFile.bytes!,
-            filename: platformFile.name,
-            contentType: MediaType('text', 'plain', {'charset': 'utf-8'}),
-          ),
-        );
-      } else if (platformFile.path != null) {
-        filesToSend.add(
-          await http.MultipartFile.fromPath(
-            'javaFiles',
-            platformFile.path!,
-            filename: platformFile.name,
-            contentType: MediaType('text', 'plain', {'charset': 'utf-8'}),
-          ),
-        );
-      }
-    }
+    final codeBytes = utf8.encode(_codeEditorController.text);
+    final String fileExtension = _selectedLanguage == 'java'
+        ? '.java'
+        : _selectedLanguage == 'javascript'
+            ? '.js'
+            : _selectedLanguage == 'python'
+                ? '.py'
+                : '.cpp';
+    
+    final String filename = _mainClassNameController.text + fileExtension;
+
+    final multipartFile = http.MultipartFile.fromBytes(
+      'javaFiles',
+      codeBytes,
+      filename: filename,
+      contentType: MediaType('text', 'plain', {'charset': 'utf-8'}),
+    );
 
     try {
       final result = await _service.executeCode(
-        codeFiles: filesToSend,
+        codeFiles: [multipartFile],
         mainClassName: _mainClassNameController.text,
         language: _selectedLanguage,
       );
@@ -213,7 +218,7 @@ class _CodeExecutionScreenState extends State<CodeExecutionScreen> {
                     items: _supportedLanguages.map((lang) {
                       return DropdownMenuItem(
                         value: lang,
-                        child: Text(lang.toUpperCase()),
+                        child: Text(lang == 'cpp' ? 'C++' : lang.toUpperCase()),
                       );
                     }).toList(),
                   ),
@@ -226,19 +231,27 @@ class _CodeExecutionScreenState extends State<CodeExecutionScreen> {
               ],
             ),
             const SizedBox(height: 10),
-            Text(
-              _selectedFiles.isEmpty
-                  ? 'No files selected.'
-                  : 'Selected Files: ${_selectedFiles.map((f) => f.name).join(', ')}',
-              style: const TextStyle(fontStyle: FontStyle.italic),
-            ),
-            const SizedBox(height: 20),
             TextField(
               controller: _mainClassNameController,
               decoration: const InputDecoration(
                 labelText: 'Main File (or Class) Name',
                 border: OutlineInputBorder(),
-                labelStyle: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text("Code Editor:", style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Expanded(
+              flex: 2,
+              child: TextField(
+                controller: _codeEditorController,
+                maxLines: null,
+                expands: true,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: "Write or paste your code here...",
+                ),
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 14),
               ),
             ),
             const SizedBox(height: 20),
@@ -248,9 +261,7 @@ class _CodeExecutionScreenState extends State<CodeExecutionScreen> {
             ),
             const SizedBox(height: 20),
             Expanded(
-              child: SingleChildScrollView(
-                child: Text(_output),
-              ),
+              child: SingleChildScrollView(child: Text(_output)),
             ),
           ],
         ),

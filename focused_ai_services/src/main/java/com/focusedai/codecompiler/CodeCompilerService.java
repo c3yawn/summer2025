@@ -16,6 +16,8 @@ public class CodeCompilerService {
 
     private static final String JAVA_DOCKER_IMAGE = "java-compiler-runner";
     private static final String JS_DOCKER_IMAGE = "js-compiler-runner";
+    private static final String PY_DOCKER_IMAGE = "python-compiler-runner";
+    private static final String CPP_DOCKER_IMAGE = "cpp-compiler-runner";
     private static final long TIMEOUT_SECONDS = 30;
 
     @PostMapping(value = "/execute", consumes = "multipart/form-data")
@@ -44,6 +46,8 @@ public class CodeCompilerService {
                 return executeJavaScript(tempHostDir, mainClassName);
             } else if ("python".equalsIgnoreCase(language)) {
                 return executePython(tempHostDir, mainClassName);
+            } else if ("cpp".equalsIgnoreCase(language)) {
+                return executeCpp(tempHostDir, mainClassName);
             }
               else {
                 return new CodeExecutionResult("Unsupported Language", "", "Language not supported: " + language, true);
@@ -148,12 +152,60 @@ public class CodeCompilerService {
         String runCmd = String.format(
             "docker run --rm --entrypoint /bin/sh -v \"%s:/app\" %s -c \"python %s > /app/%s 2>&1\"",
             tempDir.toAbsolutePath(),
-            "python-compiler-runner",
+            PY_DOCKER_IMAGE,
             pythonFileName,
             outputFile.getFileName()
         );
 
         return runDockerCommand(runCmd, outputFile, "Python Execution Failed");
+    }
+
+    private CodeExecutionResult executeCpp(Path tempDir, String mainFileName) throws IOException, InterruptedException {
+        Path outputFile = tempDir.resolve("program_output.txt");
+        Path compileErrorsFile = tempDir.resolve("compile_errors.txt");
+
+        String cppFile = mainFileName.endsWith(".cpp") ? mainFileName : mainFileName + ".cpp";
+        String executable = "program.out";
+        String mountPath = tempDir.toAbsolutePath().toString().replace("\\", "/");
+
+        // Compile
+        String compileCmd = String.format(
+            "docker run --rm --entrypoint /bin/sh -v \"%s:/app\" %s -c \"g++ /app/%s -o /app/%s 2> /app/%s\"",
+            mountPath,
+            CPP_DOCKER_IMAGE,
+            cppFile,
+            executable,
+            compileErrorsFile.getFileName()
+        );
+
+        Process compileProcess = Runtime.getRuntime().exec(compileCmd);
+        boolean compileDone = compileProcess.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+
+        if (!compileDone) {
+            compileProcess.destroyForcibly();
+            return new CodeExecutionResult("Compilation Timed Out", "", "", true);
+        }
+
+        String compileErrors = Files.exists(compileErrorsFile)
+            ? Files.readString(compileErrorsFile)
+            : getProcessOutput(compileProcess);
+
+        if (compileProcess.exitValue() != 0) {
+            System.err.println("C++ Compilation failed:\n" + compileErrors);
+            return new CodeExecutionResult("Compilation Failed", compileErrors, "", true);
+        }
+
+
+        // Run
+        String runCmd = String.format(
+            "docker run --rm --entrypoint /bin/sh -v \"%s:/app\" %s -c \"/app/%s > /app/%s 2>&1\"",
+            mountPath,
+            CPP_DOCKER_IMAGE,
+            executable,
+            outputFile.getFileName()
+        );
+
+        return runDockerCommand(runCmd, outputFile, "C++ Execution Failed");
     }
 
     private String getProcessOutput(Process process) throws IOException {

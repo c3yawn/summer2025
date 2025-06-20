@@ -13,7 +13,7 @@ Must run with port `3000` or `5000` to satisfy CORS error: `flutter run -d chrom
 * Type `git status` to see all modified files.
 * To add a file to staging (prepare it for a commit) type `git add {filepath}` where filepath is the path of whatever file you want to stage. (e.g., .\docker_resources\javascript_dockerfile\). If you type out the first few letters of the filepath and press the tab button it will automatically put the full path for you (as long as there are not other files with the same starting letters).
 * To add all files at once to staging type `git add .`
-* If you want to remove a file from staging, type in `git reset HEAD -- {filepath}` (replacing {filepath} with path for the specific file)
+* If you want to remove a file from staging, type in `git restore --staged [file]`.
 * Once all the changes you want to commit are staged, you can type `git status` again to make sure all the files you want are staged (will be in green)
 * To commit the files, type in `git commit -m ""` (put in a message in between the quotes related to the changes you made. For example, `git commit -m "added javascript capability"`)
 * To push the commits to the github repository, type in `git push -u origin {branch name}` (where {branch name} is replaced with where you want to push the changes. For example, `git push -u origin team-c/code-compiler`). Once you have pushed something to the branch, all future pushes can be done with just `git push`
