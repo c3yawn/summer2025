@@ -862,7 +862,6 @@ class _MyAppState extends State<MyApp> {
         colorScheme: ColorScheme.light(
           primary: const Color(0xFF4CAF50),
           secondary: const Color(0xFF2196F3),
-          background: const Color(0xFFF8F9FA),
           surface: Colors.white,
           onSurface: const Color(0xFF24292E),
         ),
@@ -878,7 +877,6 @@ class _MyAppState extends State<MyApp> {
         colorScheme: ColorScheme.dark(
           primary: const Color(0xFF4CAF50),
           secondary: const Color(0xFF2196F3),
-          background: const Color(0xFF1E1E1E),
           surface: const Color(0xFF252526),
           onSurface: const Color(0xFFD4D4D4),
         ),
