@@ -84,13 +84,15 @@ class _CodeExecutionScreenState extends State<CodeExecutionScreen> with TickerPr
     'cpp': Icons.code_outlined,
   };
 
-  CodeController? _codeEditorController;
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _mainClassNameController = TextEditingController();
 
-  PlatformFile? _activeFile;
-  String _output = "Welcome to Code Compiler IDE\nReady to execute your code...";
+  Map<String, CodeController> _controllers = {}; // holds controllers for each file
+  String? _activeFileName; // tracks which file is being edited
   List<PlatformFile> _selectedFiles = [];
+  PlatformFile? _activeFile;
+
+  String _output = "Welcome to Code Compiler\nReady to execute your code...";
   String _selectedLanguage = 'java';
   bool _isCodeEditorReady = false;
   bool _isExecuting = false;
@@ -109,19 +111,55 @@ class _CodeExecutionScreenState extends State<CodeExecutionScreen> with TickerPr
     _initializeCodeEditor();
   }
 
-  void _initializeCodeEditor() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        setState(() {
-          _codeEditorController = CodeController(
-            text: _getDefaultCodeForLanguage(_selectedLanguage),
-            language: _languageModes[_selectedLanguage]!,
-          );
-          _isCodeEditorReady = true;
-        });
-      }
+void _initializeCodeEditor() {
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (mounted) {
+      // Set the default active file name based on selected language
+      final defaultFileName = _getDefaultMainName(_selectedLanguage);
+      
+      setState(() {
+        _activeFileName = defaultFileName;
+        _controllers[defaultFileName] = CodeController(
+          text: _getDefaultCodeForLanguage(_selectedLanguage),
+          language: _languageModes[_selectedLanguage]!,
+        );
+        _isCodeEditorReady = true;
+      });
+    }
+  });
+}
+
+void _removeTab(String filename) {
+  if (_controllers.length <= 1) {
+    // Don't allow removing the last tab
+    setState(() {
+      _output = "⚠️ Cannot remove the last remaining file tab.";
     });
+    return;
   }
+
+  // Dispose the controller for the file being removed
+  _controllers[filename]?.dispose();
+  _controllers.remove(filename);
+
+  // If we're removing the active tab, switch to another tab
+  if (_activeFileName == filename) {
+    final remainingFiles = _controllers.keys.toList();
+    if (remainingFiles.isNotEmpty) {
+      _activeFileName = remainingFiles.first;
+    }
+  }
+
+  // Update selected files list if applicable
+  _selectedFiles.removeWhere((file) => file.name == filename);
+  if (_activeFile?.name == filename) {
+    _activeFile = _selectedFiles.isNotEmpty ? _selectedFiles.first : null;
+  }
+
+  setState(() {
+    _output = "🗑️ Removed file tab: $filename";
+  });
+}
 
   String _getDefaultCodeForLanguage(String language) {
     switch (language) {
@@ -163,33 +201,41 @@ int main() {
 
   @override
   void dispose() {
-    _codeEditorController?.dispose();
+    if (_activeFileName != null && _controllers[_activeFileName!] != null) {
+      _controllers[_activeFileName!]!.dispose();
+    }
+
     _mainClassNameController.dispose();
     _scrollController.dispose();
     _animationController.dispose();
     super.dispose();
   }
 
+  IconData _getFileIcon(String filename) {
+    if (filename.endsWith('.java')) return Icons.coffee;
+    if (filename.endsWith('.js')) return Icons.javascript;
+    if (filename.endsWith('.py')) return Icons.code;
+    if (filename.endsWith('.cpp')) return Icons.code_outlined;
+    return Icons.description;
+  }
+
+
   Future<void> _updateCodeEditorText(String text) async {
-    if (_codeEditorController != null && mounted) {
-      // Wait for any pending operations to complete
+    if (_activeFileName != null && _controllers[_activeFileName!] != null && mounted) {
       await Future.delayed(const Duration(milliseconds: 50));
-      
-      if (mounted && _codeEditorController != null) {
+
+      if (mounted && _controllers[_activeFileName!] != null) {
         try {
-          // Clear the editor first, then set the new text
-          _codeEditorController!.clear();
+          _controllers[_activeFileName!]!.clear();
           await Future.delayed(const Duration(milliseconds: 10));
-          _codeEditorController!.text = text;
-          
-          // Force a rebuild to ensure the UI reflects the change
+          _controllers[_activeFileName!]!.text = text;
+
           setState(() {});
         } catch (e) {
           print('Error updating code editor: $e');
-          // Recreate the controller with the new text
           setState(() {
-            _codeEditorController?.dispose();
-            _codeEditorController = CodeController(
+            _controllers[_activeFileName!]?.dispose();
+            _controllers[_activeFileName!] = CodeController(
               text: text,
               language: _languageModes[_selectedLanguage]!,
             );
@@ -200,11 +246,11 @@ int main() {
     }
   }
 
+
   Future<void> _pickFiles() async {
-    // Ensure the code editor is ready before attempting to load a file
-    if (!_isCodeEditorReady || _codeEditorController == null) {
+    if (!_isCodeEditorReady) {
       setState(() {
-        _output = "⚠️ Please wait for the editor to finish loading before opening a file.";
+        _output = "⚠️ Please wait for the editor to finish loading before opening files.";
       });
       return;
     }
@@ -219,63 +265,74 @@ int main() {
                 : _selectedLanguage == 'python'
                     ? ['py']
                     : ['cpp'],
-        allowMultiple: false,
+        allowMultiple: true,  // Allow multiple files now
       );
 
       if (result != null && result.files.isNotEmpty) {
         setState(() {
           _selectedFiles = result.files;
+          // Set the first file as active initially
           _activeFile = result.files.first;
-          _output = "📁 Loading file: ${result.files.first.name}...";
+          _activeFileName = _activeFile!.name;
+          _output = "📁 Loading ${_selectedFiles.length} file(s)...";
         });
 
-        String text = '';
-        if (_activeFile!.bytes != null) {
-          text = utf8.decode(_activeFile!.bytes!);
-        } else if (_activeFile!.path != null) {
-          text = await File(_activeFile!.path!).readAsString();
+        // Load all files and create controllers
+        for (var file in _selectedFiles) {
+          String content = '';
+          if (file.bytes != null) {
+            content = utf8.decode(file.bytes!);
+          } else if (file.path != null) {
+            content = await File(file.path!).readAsString();
+          }
+
+          _controllers[file.name] = CodeController(
+            text: content,
+            language: _languageModes[_selectedLanguage]!,
+          );
         }
 
-        // Wait a bit longer to ensure editor is fully ready
-        await Future.delayed(const Duration(milliseconds: 100));
-        await _updateCodeEditorText(text);
-
-        final fileName = _activeFile!.name;
-        if (_selectedLanguage == 'java' && fileName.endsWith('.java')) {
-          _mainClassNameController.text = fileName.substring(0, fileName.length - 5);
-        } else if (_selectedLanguage == 'javascript' && fileName.endsWith('.js')) {
-          _mainClassNameController.text = fileName.substring(0, fileName.length - 3);
-        } else if (_selectedLanguage == 'python' && fileName.endsWith('.py')) {
-          _mainClassNameController.text = fileName.substring(0, fileName.length - 3);
-        } else if (_selectedLanguage == 'cpp' && fileName.endsWith('.cpp')) {
-          _mainClassNameController.text = fileName.substring(0, fileName.length - 4);
+        // Update main class name based on active file extension
+        if (_activeFileName != null) {
+          if (_selectedLanguage == 'java' && _activeFileName!.endsWith('.java')) {
+            _mainClassNameController.text = _activeFileName!.substring(0, _activeFileName!.length - 5);
+          } else if (_selectedLanguage == 'javascript' && _activeFileName!.endsWith('.js')) {
+            _mainClassNameController.text = _activeFileName!.substring(0, _activeFileName!.length - 3);
+          } else if (_selectedLanguage == 'python' && _activeFileName!.endsWith('.py')) {
+            _mainClassNameController.text = _activeFileName!.substring(0, _activeFileName!.length - 3);
+          } else if (_selectedLanguage == 'cpp' && _activeFileName!.endsWith('.cpp')) {
+            _mainClassNameController.text = _activeFileName!.substring(0, _activeFileName!.length - 4);
+          }
         }
 
         setState(() {
-          _output = "✅ File loaded successfully: ${_activeFile!.name}";
+          _isCodeEditorReady = true;
+          _output = "✅ Loaded ${_selectedFiles.length} file(s), active file: $_activeFileName";
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _output = "❌ Error loading file: $e";
+          _output = "❌ Error loading files: $e";
         });
       }
     }
   }
 
+
   Future<void> _runCode() async {
-    if (_codeEditorController == null) {
+    if (_activeFileName == null || _controllers[_activeFileName!] == null) {
       setState(() {
         _output = "⚠️ Code editor is not ready. Please wait a moment and try again.";
       });
       return;
     }
 
-    final codeText = _codeEditorController!.text;
-    if (codeText.isEmpty) {
+    // Basic validation: check if at least one file has content
+    bool hasNonEmptyFile = _controllers.values.any((controller) => controller.text.isNotEmpty);
+    if (!hasNonEmptyFile) {
       setState(() {
-        _output = "⚠️ Please enter code or upload a file first.";
+        _output = "⚠️ Please enter code or upload files first.";
       });
       return;
     }
@@ -285,7 +342,7 @@ int main() {
       });
       return;
     }
-    
+
     setState(() {
       _isExecuting = true;
       _output = "🔄 Compiling and executing code...\nPlease wait...";
@@ -293,27 +350,32 @@ int main() {
 
     _animationController.repeat();
 
-    final codeBytes = utf8.encode(codeText);
-    final String fileExtension = _selectedLanguage == 'java'
-        ? '.java'
-        : _selectedLanguage == 'javascript'
-            ? '.js'
-            : _selectedLanguage == 'python'
-                ? '.py'
-                : '.cpp';
-    
-    final String filename = _mainClassNameController.text + fileExtension;
+    // Prepare multipart files for all controllers
+    final List<http.MultipartFile> multipartFiles = [];
+    for (final entry in _controllers.entries) {
+      final fileNameWithoutExt = entry.key;
+      final fileContent = entry.value.text;
 
-    final multipartFile = http.MultipartFile.fromBytes(
-      'javaFiles',
-      codeBytes,
-      filename: filename,
-      contentType: MediaType('text', 'plain', {'charset': 'utf-8'}),
-    );
+      final extension = _getExtensionsForLanguage(_selectedLanguage).first;
+      final fileName = fileNameWithoutExt.endsWith('.$extension')
+          ? fileNameWithoutExt
+          : '$fileNameWithoutExt.$extension';
+
+      final bytes = utf8.encode(fileContent);
+
+      final multipartFile = http.MultipartFile.fromBytes(
+        'javaFiles',
+        bytes,
+        filename: fileName,
+        contentType: MediaType('text', 'plain', {'charset': 'utf-8'}),
+      );
+
+      multipartFiles.add(multipartFile);
+    }
 
     try {
       final result = await _service.executeCode(
-        codeFiles: [multipartFile],
+        codeFiles: multipartFiles,
         mainClassName: _mainClassNameController.text,
         language: _selectedLanguage,
       );
@@ -322,19 +384,15 @@ int main() {
         setState(() {
           _isExecuting = false;
           if (result['hasError']) {
-            _output = "❌ Execution Failed\n";
-            _output += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+            _output = "❌ Execution Failed\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
             if (result['compilationErrors'] != null && result['compilationErrors'].isNotEmpty) {
-              _output += "🔧 COMPILATION ERRORS:\n${result['compilationErrors']}\n";
-              _output += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+              _output += "🔧 COMPILATION ERRORS:\n${result['compilationErrors']}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
             }
             if (result['programOutput'] != null && result['programOutput'].isNotEmpty) {
               _output += "⚠️ RUNTIME OUTPUT:\n${result['programOutput']}\n";
             }
           } else {
-            _output = "✅ Execution Successful!\n";
-            _output += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-            _output += "📤 PROGRAM OUTPUT:\n${result['programOutput']}";
+            _output = "✅ Execution Successful!\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📤 PROGRAM OUTPUT:\n${result['programOutput']}";
           }
         });
       }
@@ -351,15 +409,16 @@ int main() {
     _animationController.reset();
   }
 
+
   Future<void> _saveCodeToFile() async {
-    if (_codeEditorController == null) {
+    if (_controllers[_activeFileName] == null) {
       setState(() {
         _output = "⚠️ Code editor is not ready. Please wait a moment and try again.";
       });
       return;
     }
 
-    final code = _codeEditorController!.text;
+    final code = _controllers[_activeFileName]!.text;
     final fileExtension = _selectedLanguage == 'java'
         ? 'java'
         : _selectedLanguage == 'javascript'
@@ -395,36 +454,153 @@ int main() {
   }
 
   void _onLanguageChanged(String? newValue) {
-    if (newValue != null && _languageModes.containsKey(newValue)) {
-      setState(() {
-        _selectedLanguage = newValue;
-        _selectedFiles = [];
-        _activeFile = null; // Clear active file when changing language
-        _mainClassNameController.text = _getDefaultMainName(newValue);
-        _isCodeEditorReady = false;
-        _output = "🔄 Switching to ${newValue.toUpperCase()}...";
-      });
-
-      // Dispose of the old controller
-      _codeEditorController?.dispose();
-      _codeEditorController = null;
-      
-      // Create new controller with proper delay to ensure clean initialization
-      Future.delayed(const Duration(milliseconds: 200), () {
-        if (mounted) {
-          final newController = CodeController(
-            text: _getDefaultCodeForLanguage(_selectedLanguage),
-            language: _languageModes[_selectedLanguage]!,
-          );
-          
-          setState(() {
-            _codeEditorController = newController;
-            _isCodeEditorReady = true;
-            _output = "✅ Language changed to ${_selectedLanguage.toUpperCase()}\nReady to compile and run!";
-          });
-        }
-      });
+    if (newValue != null && _languageModes.containsKey(newValue) && newValue != _selectedLanguage) {
+      // Show confirmation dialog before switching languages
+      _showLanguageSwitchConfirmation(newValue);
     }
+  }
+
+  void _showLanguageSwitchConfirmation(String newLanguage) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: widget.isDarkMode ? const Color(0xFF2D2D30) : Colors.white,
+          title: Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.orange,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Switch Language?',
+                style: TextStyle(
+                  color: widget.isDarkMode ? Colors.white : Colors.black87,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'You are about to switch from ${_selectedLanguage.toUpperCase()} to ${newLanguage.toUpperCase()}.',
+                style: TextStyle(
+                  color: widget.isDarkMode ? Colors.white70 : Colors.black87,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.delete_forever,
+                      color: Colors.red,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'All current files and code will be lost!',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'This action cannot be undone. Make sure to save your work before proceeding.',
+                style: TextStyle(
+                  color: widget.isDarkMode ? Colors.white54 : Colors.black54,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog without switching
+              },
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: widget.isDarkMode ? Colors.white70 : Colors.black87,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+                _performLanguageSwitch(newLanguage); // Perform the actual switch
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              ),
+              child: const Text(
+                'Switch Language',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _performLanguageSwitch(String newLanguage) {
+    setState(() {
+      _selectedLanguage = newLanguage;
+      _selectedFiles = [];
+      _activeFile = null;
+      _mainClassNameController.text = _getDefaultMainName(newLanguage);
+      _isCodeEditorReady = false;
+      _output = "🔄 Switching to ${newLanguage.toUpperCase()}...";
+    });
+
+    // Dispose old controllers
+    for (var controller in _controllers.values) {
+      controller.dispose();
+    }
+    _controllers.clear();
+
+    // Create new controller with proper delay
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (mounted) {
+        final defaultFileName = _getDefaultMainName(_selectedLanguage);
+        final newController = CodeController(
+          text: _getDefaultCodeForLanguage(_selectedLanguage),
+          language: _languageModes[_selectedLanguage]!,
+        );
+
+        setState(() {
+          _controllers[defaultFileName] = newController;
+          _activeFileName = defaultFileName;
+          _isCodeEditorReady = true;
+          _output = "✅ Language changed to ${_selectedLanguage.toUpperCase()}\nReady to compile and run!";
+        });
+      }
+    });
   }
 
   String _getDefaultMainName(String language) {
@@ -436,6 +612,106 @@ int main() {
       default: return 'main';
     }
   }
+
+  List<String> _getExtensionsForLanguage(String lang) {
+    switch (lang) {
+      case 'java': return ['java'];
+      case 'javascript': return ['js'];
+      case 'python': return ['py'];
+      case 'cpp': return ['cpp'];
+      default: return ['txt'];
+    }
+  }
+
+  Widget _buildFileTabs() {
+  if (_controllers.isEmpty) return const SizedBox.shrink();
+  
+  return Container(
+    height: 40,
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: BoxDecoration(
+      color: widget.isDarkMode ? const Color(0xFF2D2D30) : const Color(0xFFF3F3F3),
+      border: Border(
+        bottom: BorderSide(
+          color: widget.isDarkMode ? const Color(0xFF404040) : const Color(0xFFE0E0E0),
+          width: 1,
+        ),
+      ),
+    ),
+    child: SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: _controllers.keys.map((filename) {
+          final isActive = filename == _activeFileName;
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    _activeFileName = filename;
+                  });
+                },
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isActive 
+                        ? const Color(0xFF4CAF50) 
+                        : (widget.isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(6),
+                    border: isActive ? Border.all(color: const Color(0xFF4CAF50), width: 2) : null,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _getFileIcon(filename),
+                        size: 14,
+                        color: isActive ? Colors.white : (widget.isDarkMode ? Colors.white70 : Colors.black87),
+                      ),
+                      const SizedBox(width: 6),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 120),
+                        child: Text(
+                          filename,
+                          style: TextStyle(
+                            color: isActive ? Colors.white : (widget.isDarkMode ? Colors.white70 : Colors.black87),
+                            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                            fontSize: 12,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      InkWell(
+                        onTap: () => _removeTab(filename),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.close,
+                            size: 12,
+                            color: isActive ? Colors.white : (widget.isDarkMode ? Colors.white70 : Colors.black87),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    ),
+  );
+}
 
   Widget _buildToolbar() {
     return Container(
@@ -570,7 +846,7 @@ int main() {
             ),
             const SizedBox(width: 12),
             const Text(
-              'Code Compiler IDE',
+              'Code Compiler',
               style: TextStyle(fontWeight: FontWeight.w600),
             ),
           ],
@@ -649,6 +925,7 @@ int main() {
               ],
             ),
           ),
+          _buildFileTabs(),
           // Code Editor Section
           Expanded(
             flex: 3,
@@ -695,7 +972,7 @@ int main() {
                     ),
                   ),
                   Expanded(
-                    child: _isCodeEditorReady && _codeEditorController != null
+                    child: _isCodeEditorReady && _controllers[_activeFileName] != null
                         ? CodeTheme(
                             data: widget.isDarkMode
                                 ? CodeThemeData(styles: {
@@ -725,7 +1002,7 @@ int main() {
                                     'function': const TextStyle(color: Color(0xFF6f42c1)),
                                   }),
                             child: CodeField(
-                              controller: _codeEditorController!,
+                              controller: _controllers[_activeFileName]!,
                               textStyle: const TextStyle(
                                 fontFamily: 'monospace',
                                 fontSize: 14,
@@ -855,14 +1132,13 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Code Compiler IDE',
+      title: 'Code Compiler',
       themeMode: _themeMode,
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.light(
           primary: const Color(0xFF4CAF50),
           secondary: const Color(0xFF2196F3),
-          background: const Color(0xFFF8F9FA),
           surface: Colors.white,
           onSurface: const Color(0xFF24292E),
         ),
@@ -878,7 +1154,6 @@ class _MyAppState extends State<MyApp> {
         colorScheme: ColorScheme.dark(
           primary: const Color(0xFF4CAF50),
           secondary: const Color(0xFF2196F3),
-          background: const Color(0xFF1E1E1E),
           surface: const Color(0xFF252526),
           onSurface: const Color(0xFFD4D4D4),
         ),
