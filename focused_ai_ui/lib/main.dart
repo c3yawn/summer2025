@@ -12,6 +12,45 @@ import 'package:highlight/languages/java.dart';
 import 'package:highlight/languages/javascript.dart';
 import 'package:highlight/languages/python.dart';
 import 'package:highlight/languages/cpp.dart';
+import 'package:flutter_highlight/themes/monokai-sublime.dart';
+import 'package:flutter_highlight/themes/github.dart';
+
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  ThemeMode _themeMode = ThemeMode.dark;
+
+  void _toggleTheme(bool isDarkMode) {
+    setState(() {
+      _themeMode = isDarkMode ? ThemeMode.dark : ThemeMode.light;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Focused AI Compiler',
+      debugShowCheckedModeBanner: false,
+      themeMode: _themeMode,
+      theme: ThemeData.light(),
+      darkTheme: ThemeData.dark(),
+      home: CodeExecutionScreen(
+        onToggleTheme: _toggleTheme,
+        isDarkMode: _themeMode == ThemeMode.dark,
+      ),
+    );
+  }
+}
 
 class CodeSubmissionService {
   final String baseUrl = 'http://localhost:8080/code';
@@ -826,348 +865,147 @@ int main() {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF4CAF50),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Icon(
+              Icons.terminal,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Text(
+            'Code Compiler',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+      backgroundColor: widget.isDarkMode ? const Color(0xFF1E1E1E) : const Color(0xFFF8F9FA),
+      foregroundColor: widget.isDarkMode ? Colors.white : Colors.black87,
+      elevation: 0,
+      actions: [
+        Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: const Color(0xFF4CAF50),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Icon(
-                Icons.terminal,
-                color: Colors.white,
-                size: 20,
-              ),
+            Icon(
+              Icons.light_mode,
+              size: 20,
+              color: widget.isDarkMode ? Colors.white54 : Colors.orange,
             ),
-            const SizedBox(width: 12),
-            const Text(
-              'Code Compiler',
-              style: TextStyle(fontWeight: FontWeight.w600),
+            Switch(
+              value: widget.isDarkMode,
+              onChanged: widget.onToggleTheme,
+              activeColor: const Color(0xFF4CAF50),
             ),
+            Icon(
+              Icons.dark_mode,
+              size: 20,
+              color: widget.isDarkMode ? Colors.blue : Colors.black54,
+            ),
+            const SizedBox(width: 16),
           ],
         ),
-        backgroundColor: widget.isDarkMode ? const Color(0xFF1E1E1E) : const Color(0xFFF8F9FA),
-        foregroundColor: widget.isDarkMode ? Colors.white : Colors.black87,
-        elevation: 0,
-        actions: [
-          Row(
+      ],
+    ),
+    body: Column(
+      children: [
+        _buildToolbar(),
+        Expanded(
+          child: Row(
             children: [
-              Icon(
-                Icons.light_mode,
-                size: 20,
-                color: widget.isDarkMode ? Colors.white54 : Colors.orange,
+              // LEFT PANEL: Code Editor + File Tabs
+              Expanded(
+                flex: 3,
+                child: Column(
+                  children: [
+                    _buildFileTabs(),
+                    Expanded(
+                      child: Container(
+                        color: widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+                        child: _activeFileName != null && _controllers[_activeFileName!] != null
+                            ? CodeTheme(
+                                data: CodeThemeData(
+                                  styles: widget.isDarkMode ? monokaiSublimeTheme : githubTheme,
+                                ),
+                                child: CodeField(
+                                  controller: _controllers[_activeFileName!]!,
+                                  textStyle: const TextStyle(
+                                    fontFamily: 'monospace',
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              )
+                            : const Center(
+                                child: Text(
+                                  "Editor not ready",
+                                  style: TextStyle(fontSize: 14),
+                                ),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              Switch(
-                value: widget.isDarkMode,
-                onChanged: widget.onToggleTheme,
-                activeColor: const Color(0xFF4CAF50),
+
+              // RIGHT PANEL: Output Console
+              Expanded(
+                flex: 2,
+                child: Container(
+                  color: widget.isDarkMode ? const Color(0xFF121212) : const Color(0xFFF5F5F5),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: widget.isDarkMode ? const Color(0xFF2E2E2E) : Colors.grey.shade300,
+                          border: Border(
+                            bottom: BorderSide(
+                              color: widget.isDarkMode ? Colors.grey.shade800 : Colors.grey.shade400,
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          'Console Output',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: widget.isDarkMode ? Colors.white70 : Colors.black87,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.all(16),
+                          child: Text(
+                            _output,
+                            style: TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 13,
+                              color: widget.isDarkMode ? const Color(0xFFCCCCCC) : const Color(0xFF333333),
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              Icon(
-                Icons.dark_mode,
-                size: 20,
-                color: widget.isDarkMode ? Colors.blue : Colors.black54,
-              ),
-              const SizedBox(width: 16),
             ],
           ),
-        ],
-      ),
-      body: Column(
-        children: [
-          _buildToolbar(),
-          // Main File Name Input
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: widget.isDarkMode ? const Color(0xFF252526) : const Color(0xFFFAFAFA),
-              border: Border(
-                bottom: BorderSide(
-                  color: widget.isDarkMode ? const Color(0xFF404040) : const Color(0xFFE0E0E0),
-                  width: 1,
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.file_present,
-                  color: widget.isDarkMode ? Colors.white54 : Colors.black54,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: _mainClassNameController,
-                    style: TextStyle(
-                      color: widget.isDarkMode ? Colors.white : Colors.black87,
-                      fontFamily: 'monospace',
-                    ),
-                    decoration: InputDecoration(
-                      labelText: 'Main File (or Class) Name',
-                      labelStyle: TextStyle(
-                        color: widget.isDarkMode ? Colors.white54 : Colors.black54,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide.none,
-                      ),
-                      filled: true,
-                      fillColor: widget.isDarkMode ? const Color(0xFF3C3C3C) : Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          _buildFileTabs(),
-          // Code Editor Section
-          Expanded(
-            flex: 3,
-            child: Container(
-              decoration: BoxDecoration(
-                color: widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
-                border: Border(
-                  bottom: BorderSide(
-                    color: widget.isDarkMode ? const Color(0xFF404040) : const Color(0xFFE0E0E0),
-                    width: 1,
-                  ),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: widget.isDarkMode ? const Color(0xFF2D2D30) : const Color(0xFFF8F9FA),
-                      border: Border(
-                        bottom: BorderSide(
-                          color: widget.isDarkMode ? const Color(0xFF404040) : const Color(0xFFE0E0E0),
-                          width: 1,
-                        ),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.code,
-                          size: 16,
-                          color: widget.isDarkMode ? Colors.white54 : Colors.black54,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Editor',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w500,
-                            color: widget.isDarkMode ? Colors.white70 : Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: _isCodeEditorReady && _controllers[_activeFileName] != null
-                        ? CodeTheme(
-                            data: widget.isDarkMode
-                                ? CodeThemeData(styles: {
-                                    'root': const TextStyle(
-                                      color: Color(0xFFD4D4D4),
-                                      backgroundColor: Color(0xFF1E1E1E),
-                                    ),
-                                    'keyword': const TextStyle(color: Color(0xFF569CD6)),
-                                    'string': const TextStyle(color: Color(0xFFCE9178)),
-                                    'comment': const TextStyle(color: Color(0xFF6A9955)),
-                                    'number': const TextStyle(color: Color(0xFFB5CEA8)),
-                                    'built_in': const TextStyle(color: Color(0xFF4EC9B0)),
-                                    'class-name': const TextStyle(color: Color(0xFF4EC9B0)),
-                                    'function': const TextStyle(color: Color(0xFFDCDCAA)),
-                                  })
-                                : CodeThemeData(styles: {
-                                    'root': const TextStyle(
-                                      color: Color(0xFF24292E),
-                                      backgroundColor: Colors.white,
-                                    ),
-                                    'keyword': const TextStyle(color: Color(0xFFd73a49)),
-                                    'string': const TextStyle(color: Color(0xFF032f62)),
-                                    'comment': const TextStyle(color: Color(0xFF6a737d)),
-                                    'number': const TextStyle(color: Color(0xFF005cc5)),
-                                    'built_in': const TextStyle(color: Color(0xFF6f42c1)),
-                                    'class-name': const TextStyle(color: Color(0xFF6f42c1)),
-                                    'function': const TextStyle(color: Color(0xFF6f42c1)),
-                                  }),
-                            child: CodeField(
-                              controller: _controllers[_activeFileName]!,
-                              textStyle: const TextStyle(
-                                fontFamily: 'monospace',
-                                fontSize: 14,
-                                height: 1.5,
-                              ),
-                              expands: true,
-                            ),
-                          )
-                        : Container(
-                            color: widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
-                            child: const Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  CircularProgressIndicator(),
-                                  SizedBox(height: 16),
-                                  Text(
-                                    'Initializing code editor...',
-                                    style: TextStyle(fontSize: 16),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // Output Section
-          Expanded(
-            flex: 2,
-            child: Container(
-              decoration: BoxDecoration(
-                color: widget.isDarkMode ? const Color(0xFF252526) : const Color(0xFFF8F9FA),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: widget.isDarkMode ? const Color(0xFF2D2D30) : const Color(0xFFE8E8E8),
-                      border: Border(
-                        bottom: BorderSide(
-                          color: widget.isDarkMode ? const Color(0xFF404040) : const Color(0xFFD0D0D0),
-                          width: 1,
-                        ),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.terminal,
-                          size: 16,
-                          color: widget.isDarkMode ? Colors.white54 : Colors.black54,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Output Console',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w500,
-                            color: widget.isDarkMode ? Colors.white70 : Colors.black87,
-                          ),
-                        ),
-                        const Spacer(),
-                        IconButton(
-                          icon: const Icon(Icons.clear, size: 18),
-                          onPressed: () {
-                            setState(() {
-                              _output = "Console cleared.";
-                            });
-                          },
-                          tooltip: 'Clear Output',
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      child: SingleChildScrollView(
-                        controller: _scrollController,
-                        child: Text(
-                          _output,
-                          style: TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 13,
-                            color: widget.isDarkMode ? const Color(0xFFCCCCCC) : const Color(0xFF333333),
-                            height: 1.4,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatefulWidget {
-  const MyApp({super.key});
-
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  ThemeMode _themeMode = ThemeMode.dark; // Start with dark theme
-
-  void _toggleTheme(bool isDarkMode) {
-    setState(() {
-      _themeMode = isDarkMode ? ThemeMode.dark : ThemeMode.light;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Code Compiler',
-      themeMode: _themeMode,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.light(
-          primary: const Color(0xFF4CAF50),
-          secondary: const Color(0xFF2196F3),
-          surface: Colors.white,
-          onSurface: const Color(0xFF24292E),
         ),
-        scaffoldBackgroundColor: const Color(0xFFF8F9FA),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFFF8F9FA),
-          foregroundColor: Color(0xFF24292E),
-          elevation: 0,
-        ),
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.dark(
-          primary: const Color(0xFF4CAF50),
-          secondary: const Color(0xFF2196F3),
-          surface: const Color(0xFF252526),
-          onSurface: const Color(0xFFD4D4D4),
-        ),
-        scaffoldBackgroundColor: const Color(0xFF1E1E1E),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF1E1E1E),
-          foregroundColor: Color(0xFFD4D4D4),
-          elevation: 0,
-        ),
-      ),
-      home: CodeExecutionScreen(
-        onToggleTheme: _toggleTheme,
-        isDarkMode: _themeMode == ThemeMode.dark,
-      ),
-    );
-  }
-}
+      ],
+    ),
+  );
+}}
