@@ -1,6 +1,16 @@
-# summer2025
-Summer 2025 Cohort
+# care_connnect_prototype_v1
 
-Add your name here along with the team you're on. It verifies that you have write access.
+A new Flutter project.
 
-Alyssa Harding - Team A - CareConnect
+## Getting Started
+
+This project is a starting point for a Flutter application.
+
+A few resources to get you started if this is your first Flutter project:
+
+- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
+- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+
+For help getting started with Flutter development, view the
+[online documentation](https://docs.flutter.dev/), which offers tutorials,
+samples, guidance on mobile development, and a full API reference.
