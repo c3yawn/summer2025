@@ -175,21 +175,17 @@ void _initializeCodeEditor() {
 
 
 void _removeTab(String filename) {
-  setState(() {
-    _controllers[filename]?.dispose();
-    _controllers.remove(filename);
+  final controller = _controllers.remove(filename);
+  controller?.dispose();
 
+  setState(() {
     if (_controllers.isEmpty) {
       _activeFileName = null;
-      _mainClassNameController.clear();
-      _isCodeEditorReady = false;
-      _output = "🗂️ All files closed. Create a new file to begin.";
+      _output = "📂 All files closed. Use 'New File' or 'Open File' to start again.";
+      _isCodeEditorReady = false; // Still mark editor not ready
     } else {
-      // Switch to another open tab (e.g., first available one)
       _activeFileName = _controllers.keys.first;
       _mainClassNameController.text = _activeFileName!.split('.').first;
-      _isCodeEditorReady = true;
-      _output = "📁 Switched to: $_activeFileName";
     }
   });
 }
@@ -255,13 +251,6 @@ int main() {
   }
 
   Future<void> _pickFiles() async {
-    if (!_isCodeEditorReady) {
-      setState(() {
-        _output = "⚠️ Please wait for the editor to finish loading before opening files.";
-      });
-      return;
-    }
-
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -272,19 +261,17 @@ int main() {
                 : _selectedLanguage == 'python'
                     ? ['py']
                     : ['cpp'],
-        allowMultiple: true,  // Allow multiple files now
+        allowMultiple: true,
       );
 
       if (result != null && result.files.isNotEmpty) {
         setState(() {
           _selectedFiles = result.files;
-          // Set the first file as active initially
           _activeFile = result.files.first;
           _activeFileName = _activeFile!.name;
           _output = "📁 Loading ${_selectedFiles.length} file(s)...";
         });
 
-        // Load all files and create controllers
         for (var file in _selectedFiles) {
           String content = '';
           if (file.bytes != null) {
@@ -299,16 +286,18 @@ int main() {
           );
         }
 
-        // Update main class name based on active file extension
         if (_activeFileName != null) {
-          if (_selectedLanguage == 'java' && _activeFileName!.endsWith('.java')) {
-            _mainClassNameController.text = _activeFileName!.substring(0, _activeFileName!.length - 5);
-          } else if (_selectedLanguage == 'javascript' && _activeFileName!.endsWith('.js')) {
-            _mainClassNameController.text = _activeFileName!.substring(0, _activeFileName!.length - 3);
-          } else if (_selectedLanguage == 'python' && _activeFileName!.endsWith('.py')) {
-            _mainClassNameController.text = _activeFileName!.substring(0, _activeFileName!.length - 3);
-          } else if (_selectedLanguage == 'cpp' && _activeFileName!.endsWith('.cpp')) {
-            _mainClassNameController.text = _activeFileName!.substring(0, _activeFileName!.length - 4);
+          final name = _activeFileName!;
+          if (_selectedLanguage == 'java' && name.endsWith('.java')) {
+            _mainClassNameController.text = name.substring(0, name.length - 5);
+          } else if (_selectedLanguage == 'javascript' && name.endsWith('.js')) {
+            _mainClassNameController.text = name.substring(0, name.length - 3);
+          } else if (_selectedLanguage == 'python' && name.endsWith('.py')) {
+            _mainClassNameController.text = name.substring(0, name.length - 3);
+          } else if (_selectedLanguage == 'cpp' && name.endsWith('.cpp')) {
+            _mainClassNameController.text = name.substring(0, name.length - 4);
+          } else {
+            _mainClassNameController.text = name.split('.').first;
           }
         }
 
@@ -325,6 +314,7 @@ int main() {
       }
     }
   }
+
 
 
   Future<void> _runCode() async {
@@ -849,14 +839,15 @@ int main() {
           _buildActionButton(
             icon: Icons.folder_open,
             label: 'Open File',
-            onPressed: _isCodeEditorReady ? _pickFiles : null,
+            onPressed: _pickFiles, // Allow file upload even when no tabs exist
           ),
           const SizedBox(width: 8),
           _buildActionButton(
             icon: Icons.note_add,
             label: 'New File',
-            onPressed: _isCodeEditorReady ? _createNewFileTab : null,
+            onPressed: _createNewFileTab, // Always allow creating a new file
           ),
+
           const SizedBox(width: 8),
           _buildActionButton(
             icon: Icons.save,
@@ -975,6 +966,42 @@ Widget build(BuildContext context) {
                 child: Column(
                   children: [
                     _buildFileTabs(),
+
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      child: Row(
+                        children: [
+                          const Text(
+                            'File Name:',
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: _mainClassNameController,
+                              onSubmitted: (_) => _handleMainNameChange(),
+                              style: const TextStyle(fontSize: 13),
+                              decoration: InputDecoration(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                isDense: true,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                  borderSide: BorderSide(
+                                    color: widget.isDarkMode ? Colors.white24 : Colors.black26,
+                                  ),
+                                ),
+                                hintText: 'Enter filename without extension',
+                                suffixIcon: IconButton(
+                                  icon: const Icon(Icons.check),
+                                  tooltip: 'Rename File',
+                                  onPressed: _handleMainNameChange,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     Expanded(
                       child: Container(
                         color: widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
