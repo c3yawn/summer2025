@@ -104,6 +104,9 @@ class _CodeExecutionScreenState extends State<CodeExecutionScreen> with TickerPr
   void initState() {
     super.initState();
     _mainClassNameController.text = "HelloWorld";
+
+    _mainClassNameController.addListener(_handleMainNameChange);
+
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
@@ -114,20 +117,23 @@ class _CodeExecutionScreenState extends State<CodeExecutionScreen> with TickerPr
 void _initializeCodeEditor() {
   WidgetsBinding.instance.addPostFrameCallback((_) {
     if (mounted) {
-      // Set the default active file name based on selected language
-      final defaultFileName = _getDefaultMainName(_selectedLanguage);
-      
+      final baseName = _getDefaultMainName(_selectedLanguage);
+      final extension = _getExtensionsForLanguage(_selectedLanguage).first;
+      final defaultFileName = '$baseName.$extension';
+
       setState(() {
         _activeFileName = defaultFileName;
         _controllers[defaultFileName] = CodeController(
           text: _getDefaultCodeForLanguage(_selectedLanguage),
           language: _languageModes[_selectedLanguage]!,
         );
+        _mainClassNameController.text = baseName;
         _isCodeEditorReady = true;
       });
     }
   });
 }
+
 
 void _removeTab(String filename) {
   if (_controllers.length <= 1) {
@@ -201,6 +207,8 @@ int main() {
 
   @override
   void dispose() {
+    _mainClassNameController.removeListener(_handleMainNameChange);
+
     if (_activeFileName != null && _controllers[_activeFileName!] != null) {
       _controllers[_activeFileName!]!.dispose();
     }
@@ -218,34 +226,6 @@ int main() {
     if (filename.endsWith('.cpp')) return Icons.code_outlined;
     return Icons.description;
   }
-
-
-  Future<void> _updateCodeEditorText(String text) async {
-    if (_activeFileName != null && _controllers[_activeFileName!] != null && mounted) {
-      await Future.delayed(const Duration(milliseconds: 50));
-
-      if (mounted && _controllers[_activeFileName!] != null) {
-        try {
-          _controllers[_activeFileName!]!.clear();
-          await Future.delayed(const Duration(milliseconds: 10));
-          _controllers[_activeFileName!]!.text = text;
-
-          setState(() {});
-        } catch (e) {
-          print('Error updating code editor: $e');
-          setState(() {
-            _controllers[_activeFileName!]?.dispose();
-            _controllers[_activeFileName!] = CodeController(
-              text: text,
-              language: _languageModes[_selectedLanguage]!,
-            );
-            _isCodeEditorReady = true;
-          });
-        }
-      }
-    }
-  }
-
 
   Future<void> _pickFiles() async {
     if (!_isCodeEditorReady) {
@@ -429,7 +409,7 @@ int main() {
 
     final filename = _mainClassNameController.text.isNotEmpty
         ? _mainClassNameController.text
-        : 'my_code';
+        : _activeFileName?.split('.').first ?? 'my_code';
 
     final bytes = Uint8List.fromList(code.codeUnits);
 
@@ -451,6 +431,74 @@ int main() {
         });
       }
     }
+  }
+
+  void _createNewFileTab() {
+    final baseName = 'untitled';
+    final extension = _getExtensionsForLanguage(_selectedLanguage).first;
+
+    // Start with 'untitled.extension'
+    String newFileName = '$baseName.$extension';
+    int counter = 1;
+
+    // Check for name conflicts and increment
+    while (_controllers.containsKey(newFileName)) {
+      newFileName = '$baseName$counter.$extension';
+      counter++;
+    }
+
+    final newController = CodeController(
+      text: '',
+      language: _languageModes[_selectedLanguage]!,
+    );
+
+    setState(() {
+      _controllers[newFileName] = newController;
+      _activeFileName = newFileName;
+      _mainClassNameController.text = newFileName.split('.').first; // Sync name
+      _output = "📄 Created new file: $newFileName";
+    });
+  }
+
+    void _handleMainNameChange() {
+    final inputName = _mainClassNameController.text.trim();
+    if (inputName.isEmpty || _activeFileName == null) return;
+
+    final extension = _activeFileName!.split('.').last;
+    final proposedFileName = inputName.contains('.') ? inputName : '$inputName.$extension';
+
+    if (proposedFileName == _activeFileName) return;
+
+    if (_controllers.containsKey(proposedFileName)) {
+      // Show a popup if the name already exists
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Duplicate File Name'),
+          content: Text('A tab named "$inputName" already exists. Please choose a different name.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _mainClassNameController.text =
+                    _activeFileName!.split('.').first; // Reset to old name
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    // Rename the tab
+    final controller = _controllers.remove(_activeFileName!);
+    _controllers[proposedFileName] = controller!;
+    _activeFileName = proposedFileName;
+
+    setState(() {
+      _output = "📝 File renamed to: $proposedFileName";
+    });
   }
 
   void _onLanguageChanged(String? newValue) {
@@ -587,7 +635,10 @@ int main() {
     // Create new controller with proper delay
     Future.delayed(const Duration(milliseconds: 200), () {
       if (mounted) {
-        final defaultFileName = _getDefaultMainName(_selectedLanguage);
+        final baseName = _getDefaultMainName(_selectedLanguage);
+        final extension = _getExtensionsForLanguage(_selectedLanguage).first;
+        final defaultFileName = '$baseName.$extension';
+
         final newController = CodeController(
           text: _getDefaultCodeForLanguage(_selectedLanguage),
           language: _languageModes[_selectedLanguage]!,
@@ -596,6 +647,7 @@ int main() {
         setState(() {
           _controllers[defaultFileName] = newController;
           _activeFileName = defaultFileName;
+          _mainClassNameController.text = baseName;
           _isCodeEditorReady = true;
           _output = "✅ Language changed to ${_selectedLanguage.toUpperCase()}\nReady to compile and run!";
         });
@@ -651,6 +703,7 @@ int main() {
                 onTap: () {
                   setState(() {
                     _activeFileName = filename;
+                    _mainClassNameController.text = filename.split('.').first;
                   });
                 },
                 borderRadius: BorderRadius.circular(6),
@@ -770,6 +823,12 @@ int main() {
             icon: Icons.folder_open,
             label: 'Open File',
             onPressed: _isCodeEditorReady ? _pickFiles : null,
+          ),
+          const SizedBox(width: 8),
+          _buildActionButton(
+            icon: Icons.note_add,
+            label: 'New File',
+            onPressed: _isCodeEditorReady ? _createNewFileTab : null,
           ),
           const SizedBox(width: 8),
           _buildActionButton(
