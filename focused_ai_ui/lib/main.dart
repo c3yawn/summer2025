@@ -175,34 +175,22 @@ void _initializeCodeEditor() {
 
 
 void _removeTab(String filename) {
-  if (_controllers.length <= 1) {
-    // Don't allow removing the last tab
-    setState(() {
-      _output = "⚠️ Cannot remove the last remaining file tab.";
-    });
-    return;
-  }
-
-  // Dispose the controller for the file being removed
-  _controllers[filename]?.dispose();
-  _controllers.remove(filename);
-
-  // If we're removing the active tab, switch to another tab
-  if (_activeFileName == filename) {
-    final remainingFiles = _controllers.keys.toList();
-    if (remainingFiles.isNotEmpty) {
-      _activeFileName = remainingFiles.first;
-    }
-  }
-
-  // Update selected files list if applicable
-  _selectedFiles.removeWhere((file) => file.name == filename);
-  if (_activeFile?.name == filename) {
-    _activeFile = _selectedFiles.isNotEmpty ? _selectedFiles.first : null;
-  }
-
   setState(() {
-    _output = "🗑️ Removed file tab: $filename";
+    _controllers[filename]?.dispose();
+    _controllers.remove(filename);
+
+    if (_controllers.isEmpty) {
+      _activeFileName = null;
+      _mainClassNameController.clear();
+      _isCodeEditorReady = false;
+      _output = "🗂️ All files closed. Create a new file to begin.";
+    } else {
+      // Switch to another open tab (e.g., first available one)
+      _activeFileName = _controllers.keys.first;
+      _mainClassNameController.text = _activeFileName!.split('.').first;
+      _isCodeEditorReady = true;
+      _output = "📁 Switched to: $_activeFileName";
+    }
   });
 }
 
