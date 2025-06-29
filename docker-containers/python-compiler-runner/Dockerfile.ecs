@@ -1,0 +1,15 @@
+# Python ECS Compiler Container
+FROM python:3.11-slim
+
+# Install boto3 for S3 operations
+RUN pip3 install boto3
+
+# Create working directory
+WORKDIR /app
+
+# Copy compiler script
+COPY compiler.py /app/compiler.py
+RUN chmod +x /app/compiler.py
+
+# Set entrypoint
+ENTRYPOINT ["python3", "/app/compiler.py"]

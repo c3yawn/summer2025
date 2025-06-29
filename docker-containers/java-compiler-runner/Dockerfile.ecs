@@ -1,0 +1,21 @@
+# Java ECS Compiler Container
+FROM openjdk:17-jdk-slim
+
+# Install Python and AWS CLI for S3 operations
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install boto3 for S3 operations
+RUN pip3 install boto3
+
+# Create working directory
+WORKDIR /app
+
+# Copy compiler script
+COPY compiler.py /app/compiler.py
+RUN chmod +x /app/compiler.py
+
+# Set entrypoint
+ENTRYPOINT ["python3", "/app/compiler.py"]

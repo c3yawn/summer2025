@@ -35,3 +35,30 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Generated files ###
+*.xml
+repomix-output.*
+
+# OS installers
+*.msi
+*.exe
+*.dmg
+
+# Test files
+input.json
+test-*.json
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Dependencies
+node_modules/
+.dart_tool/
+.packages
+build/
+
+# AWS
+.aws/
+*.pem
