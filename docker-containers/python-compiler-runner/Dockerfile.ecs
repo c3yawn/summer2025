@@ -1,15 +1,29 @@
-# Python ECS Compiler Container
-FROM python:3.11-slim
+# Multi-stage build for smaller, faster Python container
+FROM python:3.11-slim as builder
 
-# Install boto3 for S3 operations
-RUN pip3 install boto3
+# Install build dependencies and boto3 in one layer
+RUN pip install --no-cache-dir --target=/install boto3
+
+# Final runtime stage
+FROM python:3.11-slim as runtime
+
+# Copy only the installed packages from builder
+COPY --from=builder /install /usr/local/lib/python3.11/site-packages
+
+# Set environment variables for faster startup
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONPATH=/usr/local/lib/python3.11/site-packages
+
+# Pre-warm Python imports to reduce cold start time
+RUN python3 -c "import boto3, json, os, sys, subprocess, time; print('Python dependencies pre-warmed')"
 
 # Create working directory
 WORKDIR /app
 
-# Copy compiler script
+# Copy and prepare compiler script
 COPY compiler.py /app/compiler.py
 RUN chmod +x /app/compiler.py
 
-# Set entrypoint
+# Use exec form for better signal handling and faster startup
 ENTRYPOINT ["python3", "/app/compiler.py"]

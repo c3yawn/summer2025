@@ -1,17 +1,29 @@
-# JavaScript ECS Compiler Container (Fixed)
-FROM node:18-slim
+# Multi-stage build for optimized JavaScript container
+FROM node:18-alpine as builder
 
-# Install Python and pip for running the compiler script
-RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    python3-venv \
-    && rm -rf /var/lib/apt/lists/*
+# Install Python and pip in builder stage
+RUN apk add --no-cache python3 py3-pip
 
-# Create and activate virtual environment, then install boto3
-RUN python3 -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install boto3
+# Install boto3
+RUN pip3 install --break-system-packages --target=/install boto3
+
+# Final runtime stage - use Alpine for smaller size
+FROM node:18-alpine as runtime
+
+# Install only Python runtime (no pip/build tools)
+RUN apk add --no-cache python3
+
+# Copy boto3 installation from builder
+COPY --from=builder /install /usr/lib/python3.11/site-packages
+
+# Set environment variables for faster startup
+ENV NODE_ENV=production
+ENV PYTHONPATH=/usr/lib/python3.11/site-packages
+ENV PYTHONUNBUFFERED=1
+
+# Pre-warm Node.js and Python
+RUN node -e "console.log('Node.js pre-warmed')" && \
+    python3 -c "import boto3, json, os, sys, subprocess, time; print('Python dependencies pre-warmed')"
 
 # Create working directory
 WORKDIR /app
@@ -20,5 +32,5 @@ WORKDIR /app
 COPY compiler.py /app/compiler.py
 RUN chmod +x /app/compiler.py
 
-# Set entrypoint with virtual environment
-ENTRYPOINT ["/opt/venv/bin/python", "/app/compiler.py"]
+# Use exec form for better performance
+ENTRYPOINT ["python3", "/app/compiler.py"]

@@ -97,4 +97,93 @@ public class CodeCompilerController {
         List<String> languages = Arrays.asList("java", "javascript", "python", "cpp");
         return ResponseEntity.ok(languages);
     }
+
+    @GetMapping("/cache/stats")
+    public ResponseEntity<Map<String, Object>> getCacheStats() {
+        try {
+            Map<String, Object> stats = compilerService.getCacheStats();
+            return ResponseEntity.ok(stats);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(
+                Map.of("error", "Failed to get cache stats: " + e.getMessage())
+            );
+        }
+    }
+
+    @PostMapping("/cache/clear")
+    public ResponseEntity<Map<String, String>> clearCache() {
+        try {
+            compilerService.clearCache();
+            return ResponseEntity.ok(Map.of(
+                "message", "Cache cleared successfully",
+                "timestamp", java.time.Instant.now().toString()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(
+                Map.of("error", "Failed to clear cache: " + e.getMessage())
+            );
+        }
+    }
+
+    @GetMapping("/fast/stats")
+    public ResponseEntity<Map<String, Object>> getFastExecutionStats() {
+        try {
+            Map<String, Object> stats = compilerService.getFastExecutionStats();
+            return ResponseEntity.ok(stats);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(
+                Map.of("error", "Failed to get fast execution stats: " + e.getMessage())
+            );
+        }
+    }
+
+@PostMapping("/fast/test")
+public ResponseEntity<Map<String, Object>> testFastExecution(
+        @RequestParam("language") String language,
+        @RequestParam("javaFiles") MultipartFile[] files) {
+    try {
+        List<MultipartFile> fileList = Arrays.asList(files);
+        boolean canExecuteFast = compilerService.canExecuteFast(language, fileList);
+        
+        return ResponseEntity.ok(Map.of(
+            "language", language,
+            "file_count", files.length,
+            "file_size", files[0].getSize(),
+            "can_execute_fast", canExecuteFast,
+            "reason", canExecuteFast ? "Eligible for fast execution" : "Must use ECS execution"
+        ));
+    } catch (Exception e) {
+        return ResponseEntity.internalServerError().body(
+            Map.of("error", "Failed to test fast execution: " + e.getMessage())
+        );
+    }
+}
+
+    @GetMapping("/warm-pool/status")
+    public ResponseEntity<Map<String, Object>> getWarmPoolStatus() {
+        try {
+            Map<String, Object> status = compilerService.getWarmPoolStatus();
+            return ResponseEntity.ok(status);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(
+                Map.of("error", "Failed to get warm pool status: " + e.getMessage())
+            );
+        }
+    }
+
+    @GetMapping("/warm-pool/count")
+    public ResponseEntity<Map<String, Object>> getWarmTaskCount() {
+        try {
+            int count = compilerService.getWarmTaskCount();
+            return ResponseEntity.ok(Map.of(
+                "warm_task_count", count,
+                "timestamp", java.time.Instant.now().toString()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(
+                Map.of("error", "Failed to get warm task count: " + e.getMessage())
+            );
+        }
+    }
+
 }
