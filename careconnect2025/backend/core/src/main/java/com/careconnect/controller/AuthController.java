@@ -35,7 +35,6 @@ public class AuthController {
         return authService.register(request);
     }
 
-    // --- Login user ---
     @PostMapping("/login")
     public ResponseEntity<?> login(
             @RequestBody LoginRequest request,
