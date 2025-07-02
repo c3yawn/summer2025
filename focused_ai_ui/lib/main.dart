@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 void main() => runApp(FocusEdLoginApp());
 
 class FocusEdLoginApp extends StatelessWidget {
+  const FocusEdLoginApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -17,6 +19,8 @@ class FocusEdLoginApp extends StatelessWidget {
 }
 
 class LoginPage extends StatelessWidget {
+  const LoginPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

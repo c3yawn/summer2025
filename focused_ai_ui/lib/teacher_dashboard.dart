@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'materials_manager.dart';
 
 class TeacherDashboard extends StatelessWidget {
   const TeacherDashboard({super.key});
@@ -10,14 +11,22 @@ class TeacherDashboard extends StatelessWidget {
         backgroundColor: Colors.lightGreen[300],
         title: const Text('FocusEd AI'),
         centerTitle: true,
-        leading: const Icon(Icons.home),
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 12.0),
-            child: Icon(Icons.account_circle),
-          )
-        ],
-      ),
+        leading: IconButton(
+          icon: const Icon(Icons.home),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const TeacherDashboard()),
+            );
+          },
+        ),
+  actions: const [
+    Padding(
+      padding: EdgeInsets.only(right: 12.0),
+      child: Icon(Icons.account_circle),
+    )
+  ],
+),
       backgroundColor: Colors.lightGreen[100],
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -30,11 +39,19 @@ class TeacherDashboard extends StatelessWidget {
             ),
             const Text('Welcome, [user]!', style: TextStyle(fontSize: 16)),
             const SizedBox(height: 40),
-            _DashboardButton(imagePath: 'assets/caila.png', label: 'CAILA'),
+            _DashboardButton(label: 'CAILA', onTap: () {}),
             const SizedBox(height: 20),
-            _DashboardButton(imagePath: 'assets/materials.png', label: 'Materials Manager'),
+            _DashboardButton(
+              label: 'Materials Manager',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const MaterialsManagerScreen()),
+                );
+              },
+            ),
             const SizedBox(height: 20),
-            _DashboardButton(imagePath: 'assets/content_checker.png', label: 'Content Checker'),
+            _DashboardButton(label: 'Content Checker', onTap: () {}),
           ],
         ),
       ),
@@ -43,15 +60,15 @@ class TeacherDashboard extends StatelessWidget {
 }
 
 class _DashboardButton extends StatelessWidget {
-  final String imagePath;
   final String label;
+  final VoidCallback onTap;
 
-  const _DashboardButton({required this.imagePath, required this.label});
+  const _DashboardButton({required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
-      onPressed: () {},
+      onPressed: onTap,
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.white,
         padding: const EdgeInsets.all(16),
@@ -59,20 +76,11 @@ class _DashboardButton extends StatelessWidget {
         elevation: 4,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 30,
-            backgroundImage: AssetImage(imagePath),
-          ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(fontSize: 18, color: Colors.black),
-            ),
-          ),
-        ],
+      child: Center(
+        child: Text(
+          label,
+          style: const TextStyle(fontSize: 18, color: Colors.black),
+        ),
       ),
     );
   }
