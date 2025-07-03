@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'materials_manager.dart';
+import 'content_checker.dart';
 
 class TeacherDashboard extends StatelessWidget {
   const TeacherDashboard({super.key});
@@ -20,13 +21,13 @@ class TeacherDashboard extends StatelessWidget {
             );
           },
         ),
-  actions: const [
-    Padding(
-      padding: EdgeInsets.only(right: 12.0),
-      child: Icon(Icons.account_circle),
-    )
-  ],
-),
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 12.0),
+            child: Icon(Icons.account_circle),
+          )
+        ],
+      ),
       backgroundColor: Colors.lightGreen[100],
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -39,7 +40,9 @@ class TeacherDashboard extends StatelessWidget {
             ),
             const Text('Welcome, [user]!', style: TextStyle(fontSize: 16)),
             const SizedBox(height: 40),
-            _DashboardButton(label: 'CAILA', onTap: () {}),
+            _DashboardButton(label: 'CAILA', onTap: () {
+              // TODO: Add navigation for CAILA if needed
+            }),
             const SizedBox(height: 20),
             _DashboardButton(
               label: 'Materials Manager',
@@ -51,7 +54,15 @@ class TeacherDashboard extends StatelessWidget {
               },
             ),
             const SizedBox(height: 20),
-            _DashboardButton(label: 'Content Checker', onTap: () {}),
+            _DashboardButton(
+              label: 'Content Checker',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ContentCheckerScreen()),
+                );
+              },
+            ),
           ],
         ),
       ),
