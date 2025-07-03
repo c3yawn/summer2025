@@ -1,0 +1,9 @@
+{
+  "files": [
+    {
+      "filename": "test.py",
+      "content": "print('Hello from Container Python!')"
+    }
+  ],
+  "mainClassName": "test"
+}

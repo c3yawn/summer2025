@@ -1,0 +1,12 @@
+{
+  "name": "javascript-lambda",
+  "version": "1.0.0",
+  "description": "Container-based Lambda for JavaScript execution",
+  "main": "index.js",
+  "dependencies": {
+    "aws-sdk": "^2.1490.0"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}

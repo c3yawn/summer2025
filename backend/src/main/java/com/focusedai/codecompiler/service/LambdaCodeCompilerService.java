@@ -13,8 +13,17 @@ import java.util.ArrayList;
 @Service
 public class LambdaCodeCompilerService {
 
-    @Value("${lambda.api.base-url}")
-    private String lambdaBaseUrl;
+    @Value("${lambda.python.url}")
+    private String pythonLambdaUrl;
+
+    @Value("${lambda.javascript.url}")
+    private String javascriptLambdaUrl;
+
+    @Value("${lambda.java.url}")
+    private String javaLambdaUrl;
+
+    @Value("${lambda.cpp.url}")
+    private String cppLambdaUrl;
 
     private final WebClient webClient;
 
@@ -43,13 +52,13 @@ public class LambdaCodeCompilerService {
                 request.setMainClassName(mainClassName);
             }
 
-            // Determine endpoint based on language
-            String endpoint = getLanguageEndpoint(language);
+            // Get the correct Lambda Function URL based on language
+            String lambdaUrl = getLambdaUrl(language);
             
-            // Make HTTP request to Lambda
+            // Make HTTP request directly to Lambda Function URL
             LambdaResponse response = webClient
                     .post()
-                    .uri(lambdaBaseUrl + endpoint)
+                    .uri(lambdaUrl)
                     .header("Content-Type", "application/json")
                     .body(BodyInserters.fromValue(request))
                     .retrieve()
@@ -65,16 +74,15 @@ public class LambdaCodeCompilerService {
         }
     }
 
-    private String getLanguageEndpoint(String language) {
+    private String getLambdaUrl(String language) {
         return switch (language.toLowerCase()) {
-            case "java" -> "/compile/java";
-            case "python" -> "/compile/python";
-            case "javascript", "js" -> "/compile/javascript";
-            case "cpp", "c++" -> "/compile/cpp";
+            case "python" -> pythonLambdaUrl;
+            case "javascript", "js" -> javascriptLambdaUrl;
+            case "java" -> javaLambdaUrl;
+            case "cpp", "c++" -> cppLambdaUrl;
             default -> throw new IllegalArgumentException("Unsupported language: " + language);
         };
     }
-
     private CompilationResult convertToCompilationResult(LambdaResponse response, String language) {
         CompilationResult result = new CompilationResult();
         result.setSuccess(response.isSuccess());
