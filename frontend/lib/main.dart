@@ -426,24 +426,30 @@ int main() {
           );
         }
 
+        // IMPORTANT: Update the main class name to match the active file
         if (_activeFileName != null) {
           final name = _activeFileName!;
+          String mainClassName;
+          
           if (_selectedLanguage == 'java' && name.endsWith('.java')) {
-            _mainClassNameController.text = name.substring(0, name.length - 5);
+            mainClassName = name.substring(0, name.length - 5);
           } else if (_selectedLanguage == 'javascript' && name.endsWith('.js')) {
-            _mainClassNameController.text = name.substring(0, name.length - 3);
+            mainClassName = name.substring(0, name.length - 3);
           } else if (_selectedLanguage == 'python' && name.endsWith('.py')) {
-            _mainClassNameController.text = name.substring(0, name.length - 3);
+            mainClassName = name.substring(0, name.length - 3);
           } else if (_selectedLanguage == 'cpp' && name.endsWith('.cpp')) {
-            _mainClassNameController.text = name.substring(0, name.length - 4);
+            mainClassName = name.substring(0, name.length - 4);
           } else {
-            _mainClassNameController.text = name.split('.').first;
+            mainClassName = name.split('.').first;
           }
+          
+          // Update the main class name controller
+          _mainClassNameController.text = mainClassName;
         }
 
         setState(() {
           _isCodeEditorReady = true;
-          _output = "✅ Loaded ${_selectedFiles.length} file(s), active file: $_activeFileName";
+          _output = "✅ Loaded ${_selectedFiles.length} file(s), active file: $_activeFileName\n🎯 Main class set to: ${_mainClassNameController.text}";
         });
       }
     } catch (e) {
@@ -487,21 +493,45 @@ int main() {
 
     // Prepare multipart files for all controllers
     final List<http.MultipartFile> multipartFiles = [];
-    for (final entry in _controllers.entries) {
-      final fileNameWithoutExt = entry.key;
-      final fileContent = entry.value.text;
+    
+    // IMPORTANT: Process the active file first, then other files
+    // This ensures the backend uses the correct main class
+    final activeController = _controllers[_activeFileName!]!;
+    final activeFileContent = activeController.text;
+    
+    final extension = _getExtensionsForLanguage(_selectedLanguage).first;
+    final activeFileName = _activeFileName!.endsWith('.$extension')
+        ? _activeFileName!
+        : '$_activeFileName.$extension';
 
-      final extension = _getExtensionsForLanguage(_selectedLanguage).first;
-      final fileName = fileNameWithoutExt.endsWith('.$extension')
-          ? fileNameWithoutExt
-          : '$fileNameWithoutExt.$extension';
+    // Add the active file first
+    final activeFileBytes = utf8.encode(activeFileContent);
+    final activeMultipartFile = http.MultipartFile.fromBytes(
+      'javaFiles',
+      activeFileBytes,
+      filename: activeFileName,
+      contentType: MediaType('text', 'plain', {'charset': 'utf-8'}),
+    );
+    multipartFiles.add(activeMultipartFile);
+
+    // Add other files (excluding the active file to avoid duplicates)
+    for (final entry in _controllers.entries) {
+      final fileName = entry.key;
+      final controller = entry.value;
+      
+      // Skip the active file since we already added it
+      if (fileName == _activeFileName) continue;
+      
+      final fileContent = controller.text;
+      final properFileName = fileName.endsWith('.$extension')
+          ? fileName
+          : '$fileName.$extension';
 
       final bytes = utf8.encode(fileContent);
-
       final multipartFile = http.MultipartFile.fromBytes(
         'javaFiles',
         bytes,
-        filename: fileName,
+        filename: properFileName,
         contentType: MediaType('text', 'plain', {'charset': 'utf-8'}),
       );
 
@@ -543,7 +573,6 @@ int main() {
     _animationController.stop();
     _animationController.reset();
   }
-
 
   Future<void> _saveCodeToFile() async {
     if (_controllers[_activeFileName] == null) {
@@ -858,7 +887,19 @@ int main() {
                 onTap: () {
                   setState(() {
                     _activeFileName = filename;
-                    _mainClassNameController.text = filename.split('.').first;
+                    String mainClassName;
+                    if (_selectedLanguage == 'java' && filename.endsWith('.java')) {
+                      mainClassName = filename.substring(0, filename.length - 5);
+                    } else if (_selectedLanguage == 'javascript' && filename.endsWith('.js')) {
+                      mainClassName = filename.substring(0, filename.length - 3);
+                    } else if (_selectedLanguage == 'python' && filename.endsWith('.py')) {
+                      mainClassName = filename.substring(0, filename.length - 3);
+                    } else if (_selectedLanguage == 'cpp' && filename.endsWith('.cpp')) {
+                      mainClassName = filename.substring(0, filename.length - 4);
+                    } else {
+                      mainClassName = filename.split('.').first;
+                    }
+                    _mainClassNameController.text = mainClassName;
                   });
                 },
                 borderRadius: BorderRadius.circular(6),
@@ -1154,70 +1195,73 @@ Widget build(BuildContext context) {
                                     fontFamily: 'monospace',
                                     fontSize: 13,
                                   ),
+                                  expands: true,
+                                  maxLines: null,
+                                  wrap: false,
                                 ),
-                              )
-                            : const Center(
-                                child: Text(
-                                  "Editor not ready",
-                                  style: TextStyle(fontSize: 14),
-                                ),
+                            )
+                          : const Center(
+                              child: Text(
+                                "Editor not ready",
+                                style: TextStyle(fontSize: 14),
                               ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // RIGHT PANEL: Output Console
+            Expanded(
+              flex: 2,
+              child: Container(
+                color: widget.isDarkMode ? const Color(0xFF121212) : const Color(0xFFF5F5F5),
+                child: Column(
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: widget.isDarkMode ? const Color(0xFF2E2E2E) : Colors.grey.shade300,
+                        border: Border(
+                          bottom: BorderSide(
+                            color: widget.isDarkMode ? Colors.grey.shade800 : Colors.grey.shade400,
+                          ),
+                        ),
+                      ),
+                      child: Text(
+                        'Console Output',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: widget.isDarkMode ? Colors.white70 : Colors.black87,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          _output,
+                          style: TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 13,
+                            color: widget.isDarkMode ? const Color(0xFFCCCCCC) : const Color(0xFF333333),
+                            height: 1.4,
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-
-              // RIGHT PANEL: Output Console
-              Expanded(
-                flex: 2,
-                child: Container(
-                  color: widget.isDarkMode ? const Color(0xFF121212) : const Color(0xFFF5F5F5),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: widget.isDarkMode ? const Color(0xFF2E2E2E) : Colors.grey.shade300,
-                          border: Border(
-                            bottom: BorderSide(
-                              color: widget.isDarkMode ? Colors.grey.shade800 : Colors.grey.shade400,
-                            ),
-                          ),
-                        ),
-                        child: Text(
-                          'Console Output',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: widget.isDarkMode ? Colors.white70 : Colors.black87,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.all(16),
-                          child: Text(
-                            _output,
-                            style: TextStyle(
-                              fontFamily: 'monospace',
-                              fontSize: 13,
-                              color: widget.isDarkMode ? const Color(0xFFCCCCCC) : const Color(0xFF333333),
-                              height: 1.4,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ],
-    ),
+      ),
+    ],
+  ),
   );
-}}
+  }}
