@@ -1,0 +1,1 @@
+{"success": true, "output": "API SUCCESS!\nJava via API Gateway working!\n", "error": ""}

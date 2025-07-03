@@ -1,0 +1,8 @@
+{
+  "files": [
+    {
+      "filename": "hello.cpp",
+      "content": "#include <iostream>\n#include <string>\nusing namespace std;\n\nint main() {\n    cout << \"🎉 C++ CONTAINER SUCCESS!\" << endl;\n    cout << \"GCC compilation working!\" << endl;\n    cout << \"Math test: 15 * 7 = \" << (15 * 7) << endl;\n    return 0;\n}"
+    }
+  ]
+}

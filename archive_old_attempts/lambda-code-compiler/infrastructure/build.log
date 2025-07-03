@@ -1,0 +1,113 @@
+2025-07-01 19:50:55,955 | No config file found in this directory.
+2025-07-01 19:50:55,955 | OSError occurred while reading TOML file: [Errno 2] No such file or directory: 'C:\\Users\\jmsna\\OneDrive\\Desktop\\UMGC Summer 2025\\SWEN 670\\summer2025\\lambda-code-compiler\\infrastructure\\samconfig.toml'
+2025-07-01 19:50:55,955 | Config file location: C:\Users\jmsna\OneDrive\Desktop\UMGC Summer 2025\SWEN 670\summer2025\lambda-code-compiler\infrastructure\samconfig.toml
+2025-07-01 19:50:55,955 | Config file 'C:\Users\jmsna\OneDrive\Desktop\UMGC Summer 2025\SWEN 670\summer2025\lambda-code-compiler\infrastructure\samconfig.toml' does not exist
+2025-07-01 19:50:55,964 | Using SAM Template at C:\Users\jmsna\OneDrive\Desktop\UMGC Summer 2025\SWEN 670\summer2025\lambda-code-compiler\infrastructure\template.yaml
+2025-07-01 19:50:55,980 | OSError occurred while reading TOML file: [Errno 2] No such file or directory: 'C:\\Users\\jmsna\\OneDrive\\Desktop\\UMGC Summer 2025\\SWEN 670\\summer2025\\lambda-code-compiler\\infrastructure\\samconfig.toml'
+2025-07-01 19:50:55,980 | Using config file: samconfig.toml, config environment: default
+2025-07-01 19:50:55,980 | Expand command line arguments to:
+2025-07-01 19:50:55,980 | --template_file=C:\Users\jmsna\OneDrive\Desktop\UMGC Summer 2025\SWEN 670\summer2025\lambda-code-compiler\infrastructure\template.yaml --use_container --mount_with=READ --build_dir=.aws-sam\build --cache_dir=.aws-sam\cache 
+2025-07-01 19:50:56,071 | 'build' command is called
+2025-07-01 19:50:56,071 | Starting Build inside a container
+2025-07-01 19:50:56,079 | No Parameters detected in the template
+2025-07-01 19:50:56,100 | There is no customer defined id or cdk path defined for resource CodeCompilerApi, so we will use the resource logical id as the resource id
+2025-07-01 19:50:56,100 | There is no customer defined id or cdk path defined for resource HealthFunction, so we will use the resource logical id as the resource id
+2025-07-01 19:50:56,100 | There is no customer defined id or cdk path defined for resource PythonCompilerFunction, so we will use the resource logical id as the resource id
+2025-07-01 19:50:56,101 | There is no customer defined id or cdk path defined for resource JavaScriptCompilerFunction, so we will use the resource logical id as the resource id
+2025-07-01 19:50:56,101 | There is no customer defined id or cdk path defined for resource JavaCompilerFunction, so we will use the resource logical id as the resource id
+2025-07-01 19:50:56,101 | There is no customer defined id or cdk path defined for resource CppCompilerFunction, so we will use the resource logical id as the resource id
+2025-07-01 19:50:56,101 | 0 stacks found in the template
+2025-07-01 19:50:56,102 | No Parameters detected in the template
+2025-07-01 19:50:56,119 | There is no customer defined id or cdk path defined for resource CodeCompilerApi, so we will use the resource logical id as the resource id
+2025-07-01 19:50:56,119 | There is no customer defined id or cdk path defined for resource HealthFunction, so we will use the resource logical id as the resource id
+2025-07-01 19:50:56,119 | There is no customer defined id or cdk path defined for resource PythonCompilerFunction, so we will use the resource logical id as the resource id
+2025-07-01 19:50:56,119 | There is no customer defined id or cdk path defined for resource JavaScriptCompilerFunction, so we will use the resource logical id as the resource id
+2025-07-01 19:50:56,119 | There is no customer defined id or cdk path defined for resource JavaCompilerFunction, so we will use the resource logical id as the resource id
+2025-07-01 19:50:56,119 | There is no customer defined id or cdk path defined for resource CppCompilerFunction, so we will use the resource logical id as the resource id
+2025-07-01 19:50:56,120 | 6 resources found in the stack 
+2025-07-01 19:50:56,120 | Found Serverless function with name='HealthFunction' and InlineCode
+2025-07-01 19:50:56,120 | Skip building inline function: HealthFunction
+2025-07-01 19:50:56,120 | Found Serverless function with name='PythonCompilerFunction' and InlineCode
+2025-07-01 19:50:56,120 | Skip building inline function: PythonCompilerFunction
+2025-07-01 19:50:56,120 | Found Serverless function with name='JavaScriptCompilerFunction' and InlineCode
+2025-07-01 19:50:56,120 | Skip building inline function: JavaScriptCompilerFunction
+2025-07-01 19:50:56,120 | Found Serverless function with name='JavaCompilerFunction' and ImageUri='None'
+2025-07-01 19:50:56,120 | --base-dir is not presented, adjusting uri ../container-functions/java-compiler relative to C:\Users\jmsna\OneDrive\Desktop\UMGC Summer 2025\SWEN 670\summer2025\lambda-code-compiler\infrastructure\template.yaml
+2025-07-01 19:50:56,120 | --base-dir is not presented, adjusting uri . relative to C:\Users\jmsna\OneDrive\Desktop\UMGC Summer 2025\SWEN 670\summer2025\lambda-code-compiler\infrastructure\template.yaml
+2025-07-01 19:50:56,120 | Found Serverless function with name='CppCompilerFunction' and ImageUri='None'
+2025-07-01 19:50:56,120 | --base-dir is not presented, adjusting uri ../container-functions/cpp-compiler relative to C:\Users\jmsna\OneDrive\Desktop\UMGC Summer 2025\SWEN 670\summer2025\lambda-code-compiler\infrastructure\template.yaml
+2025-07-01 19:50:56,120 | --base-dir is not presented, adjusting uri . relative to C:\Users\jmsna\OneDrive\Desktop\UMGC Summer 2025\SWEN 670\summer2025\lambda-code-compiler\infrastructure\template.yaml
+2025-07-01 19:50:56,132 | 6 resources found in the stack 
+2025-07-01 19:50:56,132 | Found Serverless function with name='HealthFunction' and InlineCode
+2025-07-01 19:50:56,132 | Skip building inline function: HealthFunction
+2025-07-01 19:50:56,132 | Found Serverless function with name='PythonCompilerFunction' and InlineCode
+2025-07-01 19:50:56,132 | Skip building inline function: PythonCompilerFunction
+2025-07-01 19:50:56,132 | Found Serverless function with name='JavaScriptCompilerFunction' and InlineCode
+2025-07-01 19:50:56,132 | Skip building inline function: JavaScriptCompilerFunction
+2025-07-01 19:50:56,132 | Found Serverless function with name='JavaCompilerFunction' and ImageUri='None'
+2025-07-01 19:50:56,132 | Found Serverless function with name='CppCompilerFunction' and ImageUri='None'
+2025-07-01 19:50:56,132 | Error occurred while trying to track an event: Event 'BuildFunctionRuntime' does not accept value 'None'.
+2025-07-01 19:50:56,133 | Error occurred while trying to track an event: Event 'BuildFunctionRuntime' does not accept value 'None'.
+2025-07-01 19:50:56,133 | Instantiating build definitions
+2025-07-01 19:50:56,133 | No previous build graph found, generating new one
+2025-07-01 19:50:56,133 | Unique function build definition found, adding as new (Function Build Definition: BuildDefinition(None, C:\Users\jmsna\OneDrive\Desktop\UMGC Summer 2025\SWEN 670\summer2025\lambda-code-compiler\infrastructure, Image, , 82088256-84e9-48ca-bc4e-29987c5b8de6, {'Dockerfile': 'Dockerfile', 'DockerContext': 'C:\\Users\\jmsna\\OneDrive\\Desktop\\UMGC Summer 2025\\SWEN 670\\summer2025\\lambda-code-compiler\\container-functions\\java-compiler', 'DockerTag': 'java-compiler-v1'}, {}, x86_64, []), Function: Function({'function_id': 'JavaCompilerFunction', 'name': 'JavaCompilerFunction', 'functionname': 'JavaCompilerFunction', 'runtime': None, 'memory': 1024, 'timeout': 30, 'handler': None, 'imageuri': None, 'packagetype': 'Image', 'imageconfig': None, 'codeuri': 'C:\\Users\\jmsna\\OneDrive\\Desktop\\UMGC Summer 2025\\SWEN 670\\summer2025\\lambda-code-compiler\\infrastructure', 'environment': None, 'rolearn': None, 'layers': [], 'events': {'JavaApi': {'Type': 'Api', 'Properties': {'RestApiId': 'CodeCompilerApi', 'Path': '/compile/java', 'Method': 'post'}}}, 'metadata': {'Dockerfile': 'Dockerfile', 'DockerContext': 'C:\\Users\\jmsna\\OneDrive\\Desktop\\UMGC Summer 2025\\SWEN 670\\summer2025\\lambda-code-compiler\\container-functions\\java-compiler', 'DockerTag': 'java-compiler-v1', 'SamResourceId': 'JavaCompilerFunction'}, 'inlinecode': None, 'codesign_config_arn': None, 'architectures': None, 'function_url_config': None, 'function_build_info': <FunctionBuildInfo.BuildableImage: ('BuildableImage', 'Regular IMAGE function which can be build with SAM CLI')>, 'stack_path': '', 'runtime_management_config': None, 'logging_config': None}))
+2025-07-01 19:50:56,133 | Unique function build definition found, adding as new (Function Build Definition: BuildDefinition(None, C:\Users\jmsna\OneDrive\Desktop\UMGC Summer 2025\SWEN 670\summer2025\lambda-code-compiler\infrastructure, Image, , 7eceade8-28f1-47f0-bdb8-daad246d8a77, {'Dockerfile': 'Dockerfile', 'DockerContext': 'C:\\Users\\jmsna\\OneDrive\\Desktop\\UMGC Summer 2025\\SWEN 670\\summer2025\\lambda-code-compiler\\container-functions\\cpp-compiler', 'DockerTag': 'cpp-compiler-v1'}, {}, x86_64, []), Function: Function({'function_id': 'CppCompilerFunction', 'name': 'CppCompilerFunction', 'functionname': 'CppCompilerFunction', 'runtime': None, 'memory': 1024, 'timeout': 30, 'handler': None, 'imageuri': None, 'packagetype': 'Image', 'imageconfig': None, 'codeuri': 'C:\\Users\\jmsna\\OneDrive\\Desktop\\UMGC Summer 2025\\SWEN 670\\summer2025\\lambda-code-compiler\\infrastructure', 'environment': None, 'rolearn': None, 'layers': [], 'events': {'CppApi': {'Type': 'Api', 'Properties': {'RestApiId': 'CodeCompilerApi', 'Path': '/compile/cpp', 'Method': 'post'}}}, 'metadata': {'Dockerfile': 'Dockerfile', 'DockerContext': 'C:\\Users\\jmsna\\OneDrive\\Desktop\\UMGC Summer 2025\\SWEN 670\\summer2025\\lambda-code-compiler\\container-functions\\cpp-compiler', 'DockerTag': 'cpp-compiler-v1', 'SamResourceId': 'CppCompilerFunction'}, 'inlinecode': None, 'codesign_config_arn': None, 'architectures': None, 'function_url_config': None, 'function_build_info': <FunctionBuildInfo.BuildableImage: ('BuildableImage', 'Regular IMAGE function which can be build with SAM CLI')>, 'stack_path': '', 'runtime_management_config': None, 'logging_config': None}))
+2025-07-01 19:50:56,135 | Building codeuri: C:\Users\jmsna\OneDrive\Desktop\UMGC Summer 2025\SWEN 670\summer2025\lambda-code-compiler\infrastructure runtime: None architecture: x86_64 functions: JavaCompilerFunction
+2025-07-01 19:50:56,135 | Building to following folder C:\Users\jmsna\OneDrive\Desktop\UMGC Summer 2025\SWEN 670\summer2025\lambda-code-compiler\infrastructure\.aws-sam\build\JavaCompilerFunction
+2025-07-01 19:50:56,135 | Building image for JavaCompilerFunction function
+2025-07-01 19:50:56,142 | Setting DockerBuildArgs for JavaCompilerFunction function
+2025-07-01 19:51:08,617 | Failed building function JavaCompilerFunction
+Step 1/7 : FROM public.ecr.aws/lambda/python:3.11
+ ---> 759fbc2f7568
+Step 2/7 : RUN yum update -y &&     yum install -y java-11-openjdk java-11-openjdk-devel &&     yum clean all
+ ---> Running in d36b8c903da3
+Loaded plugins: ovl
+Resolving Dependencies
+--> Running transaction check
+---> Package libxml2.x86_64 0:2.9.1-6.amzn2.5.17 will be updated
+---> Package libxml2.x86_64 0:2.9.1-6.amzn2.5.18 will be an update
+--> Finished Dependency Resolution
+
+Dependencies Resolved
+
+================================================================================
+ Package        Arch          Version                   Repository         Size
+================================================================================
+Updating:
+ libxml2        x86_64        2.9.1-6.amzn2.5.18        amzn2-core        662 k
+
+Transaction Summary
+================================================================================
+Upgrade  1 Package
+
+Total download size: 662 k
+Downloading packages:
+Delta RPMs disabled because /usr/bin/applydeltarpm not installed.
+Running transaction check
+Running transaction test
+Transaction test succeeded
+Running transaction
+  Updating   : libxml2-2.9.1-6.amzn2.5.18.x86_64                            1/2 
+  Cleanup    : libxml2-2.9.1-6.amzn2.5.17.x86_64                            2/2 
+  Verifying  : libxml2-2.9.1-6.amzn2.5.18.x86_64                            1/2 
+  Verifying  : libxml2-2.9.1-6.amzn2.5.17.x86_64                            2/2 
+
+Updated:
+  libxml2.x86_64 0:2.9.1-6.amzn2.5.18                                           
+
+Complete!
+Loaded plugins: ovl
+No package java-11-openjdk available.
+No package java-11-openjdk-devel available.
+[91mError: Nothing to do
+[0mThe command '/bin/sh -c yum update -y &&     yum install -y java-11-openjdk java-11-openjdk-devel &&     yum clean all' returned a non-zero code: 1
+
+Build Failed
+2025-07-01 19:51:08,617 | Telemetry endpoint configured to be https://aws-serverless-tools-telemetry.us-west-2.amazonaws.com/metrics
+2025-07-01 19:51:08,746 | Telemetry endpoint configured to be https://aws-serverless-tools-telemetry.us-west-2.amazonaws.com/metrics
+2025-07-01 19:51:08,746 | Sending Telemetry: {'metrics': [{'commandRun': {'requestId': '363f0be3-4158-4abb-9612-47749307ce30', 'installationId': 'f0ef3c4d-8ceb-4f00-be13-c2209e698cf8', 'sessionId': '7f524eb8-ae02-4bb6-b2ef-383af8ee1805', 'executionEnvironment': 'CLI', 'ci': False, 'pyversion': '3.13.5', 'samcliVersion': '1.142.1', 'awsProfileProvided': False, 'debugFlagProvided': True, 'region': '', 'commandName': 'sam build', 'metricSpecificAttributes': {'projectType': 'CFN', 'gitOrigin': '52cfc995f86c261413d9aabb86774ea706a1fdba118107bd614d2f91c3168375', 'projectName': '48a666f835501ab81b1d69e762d7c388cca40a4e597975e5515eec9122d3e1d9', 'initialCommit': '2708ea1651925fd79d6cf1d24a30876b4e8a2b7016137087381f54b940ba17bf'}, 'duration': 12637, 'exitReason': 'DockerBuildFailed', 'exitCode': 1}}]}
+2025-07-01 19:51:08,746 | Unable to find Click Context for getting session_id.
+2025-07-01 19:51:08,748 | Sending Telemetry: {'metrics': [{'events': {'requestId': '626ee57f-dbb2-4f58-8883-94c92e19bb13', 'installationId': 'f0ef3c4d-8ceb-4f00-be13-c2209e698cf8', 'sessionId': '7f524eb8-ae02-4bb6-b2ef-383af8ee1805', 'executionEnvironment': 'CLI', 'ci': False, 'pyversion': '3.13.5', 'samcliVersion': '1.142.1', 'commandName': 'sam build', 'metricSpecificAttributes': {'events': [{'event_name': 'SamConfigFileExtension', 'event_value': '.toml', 'thread_id': '8e4f17126f3b439aa0962c7116804ef7', 'time_stamp': '2025-07-01 23:50:55.955', 'exception_name': None}, {'event_name': 'SamConfigFileExtension', 'event_value': '.toml', 'thread_id': '725e795df79b45b089ff0f2f38a8ae42', 'time_stamp': '2025-07-01 23:50:55.980', 'exception_name': None}]}}}]}
+2025-07-01 19:51:09,118 | Telemetry response: 200
+Error: The command '/bin/sh -c yum update -y &&     yum install -y java-11-openjdk java-11-openjdk-devel &&     yum clean all' returned a non-zero code: 1
+2025-07-01 19:51:09,120 | Telemetry response: 200

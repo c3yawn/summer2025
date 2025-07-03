@@ -1,0 +1,9 @@
+{
+  "files": [
+    {
+      "filename": "HelloContainer.java",
+      "content": "public class HelloContainer { public static void main(String[] args) { System.out.println(\"🎉 JAVA CONTAINER SUCCESS!\"); System.out.println(\"Amazon Corretto 11 working perfectly!\"); System.out.println(\"Math: 15 * 4 = \" + (15 * 4)); } }"
+    }
+  ],
+  "mainClassName": "HelloContainer"
+}

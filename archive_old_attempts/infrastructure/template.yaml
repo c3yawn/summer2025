@@ -1,0 +1,139 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Lambda Code Compiler Functions
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 1024
+    Environment:
+      Variables:
+        LOG_LEVEL: INFO
+
+Parameters:
+  Stage:
+    Type: String
+    Default: prod
+    Description: Deployment stage
+
+Resources:
+  CodeCompilerApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Stage
+      Cors:
+        AllowMethods: "'POST, GET, OPTIONS'"
+        AllowHeaders: "'Content-Type, Authorization'"
+        AllowOrigin: "'*'"
+
+  JavaCompilerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-java-compiler'
+      PackageType: Image
+      ImageUri: java-compiler-lambda:latest
+      Timeout: 30
+      MemorySize: 1024
+      Environment:
+        Variables:
+          LANGUAGE: java
+      Events:
+        CompileJava:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CodeCompilerApi
+            Path: /compile/java
+            Method: post
+
+  PythonCompilerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-python-compiler'
+      PackageType: Image
+      ImageUri: python-compiler-lambda:latest
+      Timeout: 15
+      MemorySize: 512
+      Environment:
+        Variables:
+          LANGUAGE: python
+      Events:
+        CompilePython:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CodeCompilerApi
+            Path: /compile/python
+            Method: post
+
+  JavaScriptCompilerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-javascript-compiler'
+      PackageType: Image
+      ImageUri: javascript-compiler-lambda:latest
+      Timeout: 15
+      MemorySize: 512
+      Environment:
+        Variables:
+          LANGUAGE: javascript
+      Events:
+        CompileJavaScript:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CodeCompilerApi
+            Path: /compile/javascript
+            Method: post
+
+  CppCompilerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-cpp-compiler'
+      PackageType: Image
+      ImageUri: cpp-compiler-lambda:latest
+      Timeout: 30
+      MemorySize: 1024
+      Environment:
+        Variables:
+          LANGUAGE: cpp
+      Events:
+        CompileCpp:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CodeCompilerApi
+            Path: /compile/cpp
+            Method: post
+
+  HealthCheckFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-health-check'
+      Runtime: python3.11
+      Handler: index.lambda_handler
+      InlineCode: |
+        import json
+        def lambda_handler(event, context):
+            return {
+                'statusCode': 200,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({
+                    'status': 'healthy',
+                    'service': 'Lambda Code Compiler',
+                    'timestamp': context.aws_request_id
+                })
+            }
+      Events:
+        HealthCheck:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CodeCompilerApi
+            Path: /health
+            Method: get
+
+Outputs:
+  ApiGatewayEndpoint:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${CodeCompilerApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiEndpoint"

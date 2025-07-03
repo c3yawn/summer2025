@@ -1,0 +1,30 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  Stage:
+    Type: String
+    Default: prod
+
+Resources:
+  JavaCompilerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'java-compiler-${Stage}'
+      PackageType: Image
+      ImageConfig:
+        Command: ["lambda_function.lambda_handler"]
+      Timeout: 30
+      MemorySize: 1024
+      Environment:
+        Variables:
+          STAGE: !Ref Stage
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: ./
+      DockerTag: java-sam-build
+
+Outputs:
+  JavaFunction:
+    Description: "Java Compiler Function ARN"
+    Value: !GetAtt JavaCompilerFunction.Arn

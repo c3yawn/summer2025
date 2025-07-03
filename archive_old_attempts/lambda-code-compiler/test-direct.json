@@ -1,0 +1,9 @@
+{
+  "files": [
+    {
+      "filename": "FinalTest.java",
+      "content": "public class FinalTest { public static void main(String[] args) { System.out.println(\"🎉 JAVA CONTAINER SUCCESS!\"); System.out.println(\"Complete serverless transformation!\"); System.out.println(\"Java \" + System.getProperty(\"java.version\") + \" working perfectly!\"); } }"
+    }
+  ],
+  "mainClassName": "FinalTest"
+}

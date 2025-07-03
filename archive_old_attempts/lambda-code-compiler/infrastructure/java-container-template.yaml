@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  Stage:
+    Type: String
+    Default: prod
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 1024
+
+Resources:
+  # Java Container Function
+  JavaCompilerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'lambda-code-compiler-java-${Stage}'
+      PackageType: Image
+      ImageConfig:
+        Command: ["lambda_function.lambda_handler"]
+      Environment:
+        Variables:
+          STAGE: !Ref Stage
+      Events:
+        JavaCompile:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CodeCompilerApi
+            Path: /compile/java
+            Method: post
+            
+  # API Gateway
+  CodeCompilerApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub 'code-compiler-api-${Stage}'
+      StageName: !Ref Stage
+      Cors:
+        AllowMethods: "'*'"
+        AllowHeaders: "'*'"
+        AllowOrigin: "'*'"
+
+    Metadata:
+      Dockerfile: ../java-container/Dockerfile
+      DockerContext: ../java-container/
+      DockerTag: java-compiler-v1
+
+Outputs:
+  JavaFunctionName:
+    Description: "Java Lambda Function Name"
+    Value: !Ref JavaCompilerFunction
+  ApiGatewayEndpoint:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${CodeCompilerApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}/"

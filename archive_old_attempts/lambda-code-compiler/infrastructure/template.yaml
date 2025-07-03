@@ -1,0 +1,154 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Java Container + ZIP Functions
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 1024
+
+Resources:
+  CodeCompilerApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowMethods: "'POST, GET, OPTIONS'"
+        AllowHeaders: "'Content-Type, Authorization'"
+        AllowOrigin: "'*'"
+
+  HealthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.11
+      Handler: index.lambda_handler
+      Events:
+        HealthApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CodeCompilerApi
+            Path: /health
+            Method: get
+      InlineCode: |
+        import json
+        def lambda_handler(event, context):
+            return {
+                'statusCode': 200,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({
+                    'status': 'healthy',
+                    'message': 'Java Container Lambda Compiler',
+                    'available_languages': ['python', 'javascript', 'java'],
+                    'container_languages': ['java'],
+                    'note': 'Java uses Amazon Corretto 11 container',
+                    'version': '6.0.0'
+                })
+            }
+
+  PythonCompilerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.11
+      Handler: index.lambda_handler
+      Events:
+        PythonApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CodeCompilerApi
+            Path: /compile/python
+            Method: post
+      InlineCode: |
+        import json, subprocess, tempfile, os, sys
+        def lambda_handler(event, context):
+            try:
+                body = json.loads(event['body']) if 'body' in event and event['body'] else event
+                files = body.get('files', [])
+                if not files: return create_response(False, '', 'No files provided')
+                
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    main_file = None
+                    for file_data in files:
+                        filename = file_data.get('filename', 'main.py')
+                        content = file_data.get('content', '')
+                        filepath = os.path.join(temp_dir, filename)
+                        with open(filepath, 'w') as f: f.write(content)
+                        if not main_file: main_file = filepath
+                    
+                    result = subprocess.run([sys.executable, main_file], cwd=temp_dir, capture_output=True, text=True, timeout=25)
+                    return create_response(result.returncode == 0, result.stdout, result.stderr)
+            except Exception as e:
+                return create_response(False, '', f'Error: {str(e)}')
+        
+        def create_response(success, output, error):
+            return {'statusCode': 200, 'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}, 'body': json.dumps({'success': success, 'output': output, 'error': error})}
+
+  JavaScriptCompilerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs18.x
+      Handler: index.handler
+      Events:
+        JavaScriptApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CodeCompilerApi
+            Path: /compile/javascript
+            Method: post
+      InlineCode: |
+        const { spawn } = require('child_process'), fs = require('fs'), path = require('path'), os = require('os');
+        exports.handler = async (event, context) => {
+            try {
+                let body = event.body ? (typeof event.body === 'string' ? JSON.parse(event.body) : event.body) : event;
+                const files = body.files || [];
+                if (files.length === 0) return createResponse(false, '', 'No files provided');
+                
+                const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'js-'));
+                let mainFilePath = null;
+                try {
+                    for (const fileData of files) {
+                        const filename = fileData.filename || 'main.js';
+                        const filePath = path.join(tempDir, filename);
+                        fs.writeFileSync(filePath, fileData.content || '');
+                        if (!mainFilePath) mainFilePath = filePath;
+                    }
+                    const result = await executeScript(path.basename(mainFilePath), tempDir);
+                    return createResponse(result.success, result.output, result.error);
+                } finally { try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (e) {} }
+            } catch (error) { return createResponse(false, '', `Error: ${error.message}`); }
+        };
+        
+        function executeScript(filename, workingDir) {
+            return new Promise((resolve) => {
+                const child = spawn('node', [filename], { cwd: workingDir });
+                let stdout = '', stderr = '';
+                child.stdout.on('data', (data) => stdout += data);
+                child.stderr.on('data', (data) => stderr += data);
+                const timeout = setTimeout(() => { child.kill(); resolve({ success: false, output: '', error: 'Timeout' }); }, 25000);
+                child.on('close', (code) => { clearTimeout(timeout); resolve({ success: code === 0, output: stdout, error: stderr }); });
+            });
+        }
+        
+        function createResponse(success, output, error) {
+            return { statusCode: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ success, output, error }) };
+        }
+
+  JavaCompilerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      Events:
+        JavaApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CodeCompilerApi
+            Path: /compile/java
+            Method: post
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: ../container-functions/java-compiler
+      DockerTag: java-compiler-v1
+
+Outputs:
+  ApiGatewayEndpoint:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${CodeCompilerApi}.execute-api.${AWS::Region}.amazonaws.com/prod"

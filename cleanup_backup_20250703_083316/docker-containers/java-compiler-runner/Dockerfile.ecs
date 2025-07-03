@@ -1,0 +1,36 @@
+# Multi-stage build for optimized Java container
+FROM openjdk:17-jdk-slim as builder
+
+# Install Python and boto3 in builder stage
+RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-pip && \
+    pip3 install --target=/install boto3 && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Final runtime stage
+FROM openjdk:17-jdk-slim as runtime
+
+# Install only Python runtime
+RUN apt-get update && apt-get install -y --no-install-recommends python3 && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Copy boto3 from builder
+COPY --from=builder /install /usr/local/lib/python3.11/site-packages
+
+# Set environment variables
+ENV PYTHONPATH=/usr/local/lib/python3.11/site-packages
+ENV PYTHONUNBUFFERED=1
+ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+TieredCompilation -XX:TieredStopAtLevel=1"
+
+# Pre-warm JVM and Python
+RUN java -version && \
+    python3 -c "import boto3, json, os, sys, subprocess, time; print('Dependencies pre-warmed')"
+
+# Create working directory
+WORKDIR /app
+
+# Copy compiler script
+COPY compiler.py /app/compiler.py
+RUN chmod +x /app/compiler.py
+
+# Use exec form for better performance
+ENTRYPOINT ["python3", "/app/compiler.py"]

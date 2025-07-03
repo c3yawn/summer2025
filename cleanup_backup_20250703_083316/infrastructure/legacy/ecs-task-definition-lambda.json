@@ -1,0 +1,40 @@
+{
+  "family": "code-compiler-service",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::123904282156:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::123904282156:role/ecsTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "code-compiler-backend",
+      "image": "123904282156.dkr.ecr.us-east-1.amazonaws.com/code-compiler-backend:lambda",
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "protocol": "tcp"
+        }
+      ],
+      "essential": true,
+      "environment": [
+        {
+          "name": "AWS_REGION",
+          "value": "us-east-1"
+        },
+        {
+          "name": "AWS_ACCOUNT_ID",
+          "value": "123904282156"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/code-compiler-service",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

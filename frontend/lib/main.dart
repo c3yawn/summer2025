@@ -52,41 +52,182 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
+// Enhanced CodeSubmissionService with CORS debugging
 class CodeSubmissionService {
-  final String baseUrl = 'http://localhost:8080/code';
+  final String baseUrl = 'http://localhost:8080/api';
 
   Future<Map<String, dynamic>> executeCode({
     required List<http.MultipartFile> codeFiles,
     required String mainClassName,
     required String language,
   }) async {
-    final uri = Uri.parse('$baseUrl/execute');
-
-    // Use the same multipart approach for ALL languages (including C++)
-    final request = http.MultipartRequest('POST', uri);
-    request.fields['mainClassName'] = mainClassName;
-    request.fields['language'] = language;
-    request.files.addAll(codeFiles);
-
-    try {
-      final response = await request.send();
-      final responseBody = await response.stream.bytesToString();
-
-      if (response.statusCode == 200) {
-        return jsonDecode(responseBody);
-      } else {
-        return {
+    print('🔍 DEBUG: Starting executeCode for language: $language');
+    print('🔍 DEBUG: Target URL: $baseUrl/compile/$language');
+    
+    // First, test if the backend is reachable
+    final connectionTest = await testBackendConnection();
+    if (!connectionTest['success']) {
+      return {
         'success': false,
         'output': '',
-        'error': 'Server responded with status ${response.statusCode}: $responseBody',
+        'error': 'Backend connection failed: ${connectionTest['error']}\n\nPlease ensure Spring Boot is running on http://localhost:8080/',
       };
+    }
+
+    // Convert multipart files to JSON format
+    final List<Map<String, String>> files = [];
+    
+    for (final file in codeFiles) {
+      final bytes = await file.finalize().toBytes();
+      final content = utf8.decode(bytes);
+      
+      files.add({
+        'filename': file.filename ?? 'untitled',
+        'content': content,
+      });
+    }
+
+    final payload = {
+      'files': files,
+      'mainClassName': mainClassName,
+    };
+
+    print('🔍 DEBUG: Payload prepared with ${files.length} files');
+
+    try {
+      // Make the actual compilation request
+      print('🔍 DEBUG: Sending POST request...');
+      
+      final response = await http.post(
+        Uri.parse('$baseUrl/compile/$language'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Origin': 'http://localhost:3000',  // Explicit origin for CORS
+        },
+        body: jsonEncode(payload),
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Request timeout after 30 seconds');
+        },
+      );
+
+      print('🔍 DEBUG: Response received');
+      print('🔍 DEBUG: Status Code: ${response.statusCode}');
+      print('🔍 DEBUG: Response Headers: ${response.headers}');
+      print('🔍 DEBUG: Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        print('✅ DEBUG: Successfully parsed JSON response');
+        return result;
+      } else {
+        print('❌ DEBUG: Non-200 status code received');
+        return {
+          'success': false,
+          'output': '',
+          'error': 'Server error (${response.statusCode}): ${response.body}',
+        };
+      }
+    } catch (e) {
+      print('❌ DEBUG: Exception during request: $e');
+      print('❌ DEBUG: Exception type: ${e.runtimeType}');
+      
+      // Provide specific error messages based on the exception type
+      String errorMessage;
+      if (e.toString().contains('Failed host lookup')) {
+        errorMessage = 'Cannot resolve localhost:8080 - Spring Boot server not running?';
+      } else if (e.toString().contains('Connection refused')) {
+        errorMessage = 'Connection refused - Spring Boot server not running on port 8080?';
+      } else if (e.toString().contains('CORS')) {
+        errorMessage = 'CORS error - Spring Boot CORS configuration issue';
+      } else if (e.toString().contains('timeout')) {
+        errorMessage = 'Request timeout - Spring Boot server may be overloaded';
+      } else {
+        errorMessage = 'Network error: $e';
+      }
+      
+      return {
+        'success': false,
+        'output': '',
+        'error': errorMessage,
+      };
+    }
+  }
+
+  // Test if backend is reachable
+  Future<Map<String, dynamic>> testBackendConnection() async {
+    try {
+      print('🔍 DEBUG: Testing backend connection to http://localhost:8080/');
+      
+      final response = await http.get(
+        Uri.parse('http://localhost:8080/'),
+        headers: {
+          'Accept': 'text/plain',
+          'Origin': 'http://localhost:3000',
+        },
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Backend connection timeout');
+        },
+      );
+
+      print('🔍 DEBUG: Backend test status: ${response.statusCode}');
+      print('🔍 DEBUG: Backend test response: ${response.body.substring(0, 100)}...');
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': 'Backend is reachable',
+        };
+      } else {
+        return {
+          'success': false,
+          'error': 'Backend returned status ${response.statusCode}',
+        };
+      }
+    } catch (e) {
+      print('❌ DEBUG: Backend connection test failed: $e');
+      return {
+        'success': false,
+        'error': 'Cannot reach backend: $e',
+      };
+    }
+  }
+
+  // Simple ping test
+  Future<Map<String, dynamic>> pingBackend() async {
+    try {
+      print('🔍 DEBUG: Pinging backend...');
+      
+      final response = await http.get(
+        Uri.parse('http://localhost:8080/backend-status'),
+        headers: {
+          'Accept': 'application/json',
+          'Origin': 'http://localhost:3000',
+        },
+      ).timeout(const Duration(seconds: 5));
+
+      print('🔍 DEBUG: Ping response: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'output': 'Backend is responding! ✅\n\nResponse: ${response.body}',
+        };
+      } else {
+        return {
+          'success': false,
+          'error': 'Backend ping failed with status ${response.statusCode}',
+        };
       }
     } catch (e) {
       return {
-      'success': false,
-      'output': '',
-      'error': 'Failed to connect to the server: $e',
-    };
+        'success': false,
+        'error': 'Backend ping failed: $e',
+      };
     }
   }
 }
