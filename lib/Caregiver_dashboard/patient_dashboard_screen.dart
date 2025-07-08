@@ -1,3 +1,7 @@
+import 'package:care_connect/Hamburger_Menu_Items/HomeMonitoring.dart';
+import 'package:care_connect/Hamburger_Menu_Items/MedicationManagement.dart';
+import 'package:care_connect/Hamburger_Menu_Items/SmartDevices.dart';
+import 'package:care_connect/Hamburger_Menu_Items/Wearables.dart';
 import 'package:flutter/material.dart';
 import 'AddPatients.dart';
 import '../Hamburger_Menu_Items/HealthCareNotes.dart';
@@ -130,6 +134,50 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const SOSNotificationScreen()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.watch),
+              title: const Text('Wearables'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const WearablesScreen()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.home_outlined),
+              title: const Text('Home Monitoring'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const HomeMonitoringScreen()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.devices),
+              title: const Text('Smart Devices'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SmartDevicesScreen()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.medication),
+              title: const Text('Medication Management'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const MedicationManagementScreen()),
                 );
               },
             ),
